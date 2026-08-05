@@ -576,13 +576,23 @@ export default function App() {
     let body = `各位老師好：\n\n`;
     body += `老師 ${requester} 提出了調代課申請，內容如下：\n`;
     body += `- 假別/類型：${req.type === 'sub' ? `請假 (${req.reason})` : '調課'}\n`;
-    body += `- 發生日期：${req.targetDate || '未指定'}\n`;
-    body += `- 原授課班級：${className}\n`;
-    body += `- 原上課時間：${lessonTime} (${lesson?.subject})\n`;
+    
     if (req.type === 'sub') {
+      body += `- 發生日期：${req.targetDate || '未指定'}\n`;
+      body += `- 原授課班級：${className}\n`;
+      body += `- 原上課時間：${lessonTime} (${lesson?.subject})\n`;
       body += `- 代課老師：${target}\n`;
     } else {
+      body += `- 我方調課日期：${req.targetDate || '未指定'}\n`;
+      body += `- 原授課班級：${className}\n`;
+      body += `- 原上課時間：${lessonTime} (${lesson?.subject})\n`;
       body += `- 調換對象：${target}\n`;
+      body += `- 對方換課日期：${req.targetSwapDate || '未指定'}\n`;
+      const targetLesson = lessons.find(l => l.id === req.targetLessonId);
+      if (targetLesson) {
+          const tClassName = classes.find(c => c.id === targetLesson.classId)?.name || targetLesson.classId;
+          body += `- 對方換課時段：${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節 (${tClassName})\n`;
+      }
     }
     body += `\n教務處已完成審核。特此通知相關人員。\n\n嘉新國中教務處 敬上`;
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -595,7 +605,12 @@ export default function App() {
     teacherReqs.forEach((r, idx) => {
       body += `【申請 ${idx + 1}】\n`;
       body += `- 類型：${r.type === 'sub' ? `請假 (${r.reason})` : '調課'}\n`;
-      body += `- 日期：${r.targetDate || '未指定'}\n`;
+      if (r.type === 'sub') {
+          body += `- 發生日期：${r.targetDate || '未指定'}\n`;
+      } else {
+          body += `- 我方日期：${r.targetDate || '未指定'} \n`;
+          body += `- 對方換課日期：${r.targetSwapDate || '未指定'}\n`;
+      }
       body += `---------------------------\n`;
     });
     body += `\n特此通知相關授課與代課老師，感謝配合！\n\n嘉新國中教務處 敬上`;
@@ -610,7 +625,7 @@ export default function App() {
     const [requestType, setRequestType] = useState(editReq ? editReq.type : 'sub'); 
     const [targetTeacher, setTargetTeacher] = useState(editReq ? editReq.targetTeacherId : '');
     const [targetLessonId, setTargetLessonId] = useState(editReq ? (editReq.targetLessonId || '') : ''); 
-    const [targetSwapDate, setTargetSwapDate] = useState(editReq ? (editReq.targetSwapDate || editReq.targetDate) : new Date().toISOString().split('T')[0]); 
+    const [targetSwapDate, setTargetSwapDate] = useState(editReq ? (editReq.targetSwapDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]); 
     const [reason, setReason] = useState(editReq ? editReq.reason : '事假');
     const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : new Date().toISOString().split('T')[0]); 
     const targetClass = classes.find(c => c.id === lesson.classId) || { name: lesson.classId };
@@ -631,9 +646,14 @@ export default function App() {
     }, [targetTeacher, lessons]);
 
     const handleSubmit = async () => {
-      if (!targetDate) { showMessage('error', "請選擇發生日期"); return; }
-      if (!reason) { showMessage('error', "請選擇假別或事由"); return; }
-      if (requestType === 'swap' && !targetLessonId) { showMessage('error', "請選擇要與對方互調的具體課堂"); return; }
+      if (!targetDate) { showMessage('error', requestType === 'sub' ? "請選擇請假代課日期" : "請選擇您的原授課日期"); return; }
+      
+      if (requestType === 'swap') {
+        if (!targetSwapDate) { showMessage('error', "請選擇對方的換課日期"); return; }
+        if (!targetLessonId) { showMessage('error', "請選擇要與對方互調的具體課堂"); return; }
+      } else {
+        if (!reason) { showMessage('error', "請選擇假別或事由"); return; }
+      }
       
       try {
         if (editReq) {
@@ -643,7 +663,7 @@ export default function App() {
             targetLessonId: requestType === 'swap' ? targetLessonId : null,
             targetSwapDate: requestType === 'swap' ? targetSwapDate : null,
             targetDate: targetDate,
-            reason: reason
+            reason: requestType === 'swap' ? '調課' : reason
           });
           onClose();
           showMessage('success', '✅ 申請已成功修改！');
@@ -660,7 +680,7 @@ export default function App() {
             targetDate: targetDate,
             status: 'pending',
             timestamp: new Date().toISOString(),
-            reason: reason
+            reason: requestType === 'swap' ? '調課' : reason
           };
           await setDoc(doc(db, 'requests', reqId), newReq);
           onClose();
@@ -682,7 +702,7 @@ export default function App() {
           
           <div className="p-6 flex-1 overflow-y-auto space-y-4">
             <div className="bg-blue-50 p-3 rounded-xl border border-blue-200 text-sm grid grid-cols-2 gap-2">
-              <div><span className="text-gray-500">授課班級：</span><span className="font-bold text-blue-900">{targetClass.name}</span></div>
+              <div><span className="text-gray-500">原授課班級：</span><span className="font-bold text-blue-900">{targetClass.name}</span></div>
               <div><span className="text-gray-500">上課科目：</span><span className="font-bold text-blue-900">{lesson.subject}</span></div>
               <div className="col-span-2"><span className="text-gray-500">原上課時段：</span><span className="font-bold text-blue-900">{DAYS[day-1]} 第 {period} 節</span></div>
             </div>
@@ -719,42 +739,50 @@ export default function App() {
                 </div>
               </>
             ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">選擇調課對象</label>
-                  <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white font-medium focus:ring-blue-500">
-                    <option value="">-- 請選擇調課老師 --</option>
-                    {allOtherTeachers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
-                    ))}
-                  </select>
+              <div className="space-y-4">
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
+                  <label className="block text-sm font-bold text-blue-800">1. 我的調課日 (我這堂課發生在哪天)</label>
+                  <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white shadow-sm"/>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-3">
+                  <label className="block text-sm font-bold text-emerald-800">2. 對方的換課資訊 (我要跟誰、哪天換)</label>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">對方換課日期</label>
-                    <input type="date" value={targetSwapDate} onChange={e => setTargetSwapDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-blue-500 bg-white"/>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">對方這堂課第幾節</label>
-                    <select value={targetLessonId} onChange={e => setTargetLessonId(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white font-medium focus:ring-blue-500">
-                      <option value="">-- 選擇對方的課堂 --</option>
-                      {targetTeacherLessons.map(l => {
-                        const cName = classes.find(c => c.id === l.classId)?.name || l.classId;
-                        return (
-                          <option key={l.id} value={l.id}>
-                            {DAYS[l.day-1]} 第 {l.period} 節 - {cName} ({l.subject})
-                          </option>
-                        )
-                      })}
+                    <label className="block text-xs font-semibold text-emerald-700 mb-1">選擇調課對象</label>
+                    <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
+                      <option value="">-- 請選擇調課老師 --</option>
+                      {allOtherTeachers.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
+                      ))}
                     </select>
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-emerald-700 mb-1">對方換課日期</label>
+                      <input type="date" value={targetSwapDate} onChange={e => setTargetSwapDate(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm focus:ring-emerald-500 bg-white shadow-sm"/>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-emerald-700 mb-1">對方這堂課第幾節</label>
+                      <select value={targetLessonId} onChange={e => setTargetLessonId(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
+                        <option value="">-- 選擇對方的課堂 --</option>
+                        {targetTeacherLessons.map(l => {
+                          const cName = classes.find(c => c.id === l.classId)?.name || l.classId;
+                          return (
+                            <option key={l.id} value={l.id}>
+                              {DAYS[l.day-1]} 第 {l.period} 節 - {cName}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-              </>
+              </div>
             )}
 
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">取消</button>
-              <button onClick={handleSubmit} disabled={!targetTeacher || (requestType === 'swap' && !targetLessonId)} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handleSubmit} disabled={!targetTeacher || (requestType === 'swap' && !targetLessonId)} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 shadow-sm">
                 {editReq ? '儲存修改' : '送出申請'}
               </button>
             </div>
@@ -934,10 +962,19 @@ export default function App() {
                   
                   return (
                     <tr key={req.id} className="border-b hover:bg-slate-50 print:border-black">
-                      <td className="p-3 font-bold text-blue-700">{req.targetDate || '-'}</td>
+                      <td className="p-3 font-bold text-slate-800">
+                        {req.type === 'sub' ? (
+                          <span className="text-blue-700">{req.targetDate || '-'}</span>
+                        ) : (
+                          <div className="flex flex-col gap-0.5 text-xs">
+                            <span className="text-blue-700">我方：{req.targetDate || '-'}</span>
+                            <span className="text-emerald-700">對方：{req.targetSwapDate || '-'}</span>
+                          </div>
+                        )}
+                      </td>
                       <td className="p-3 font-bold text-slate-800">{requester}</td>
                       <td className="p-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-800'}`}>
                           {req.type === 'sub' ? `請假 (${req.reason})` : '調課'}
                         </span>
                       </td>
@@ -1076,7 +1113,6 @@ export default function App() {
                                 </button>
                                 <div className="text-xs text-blue-700 relative z-10">{lesson.subject}</div>
                                 
-                                {/* 調代課觸發遮罩：加入 pointer-events-none 確保不干擾按鈕點擊，加入 z-0 置底 */}
                                 {isMyOwnSchedule && (
                                   <div className="absolute inset-0 bg-indigo-600/90 text-white rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0">
                                     ✨ 點擊空白處申請調代
@@ -1287,7 +1323,7 @@ export default function App() {
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
-      {}
+      {/* 修改密碼 Modal */}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1324,7 +1360,7 @@ export default function App() {
         </div>
       )}
 
-      {}
+      {/* 登入 Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1366,7 +1402,7 @@ export default function App() {
         </div>
       )}
 
-      {}
+      {/* 以下是各類刪除、新增與匯入的確認視窗...保留原樣 */}
       {showAddClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -1489,7 +1525,7 @@ export default function App() {
         </div>
       )}
 
-      {}
+      {/* 匯入 Modal */}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
