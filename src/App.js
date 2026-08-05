@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDyqxSFKnQIbgL-PCl6BTi_IvJyDgjIRB8",
@@ -125,10 +125,26 @@ export default function App() {
   const initializeDatabase = async () => {
     showMessage('success', '🔄 正在建立預設資料庫...');
     try {
-      const promises = [];
-      INITIAL_CLASSES.forEach(c => promises.push(setDoc(doc(db, 'classes', c.id), c)));
-      INITIAL_TEACHERS.forEach(t => promises.push(setDoc(doc(db, 'teachers', t.id), t)));
-      await Promise.all(promises);
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      const pushToBatch = (ref, data) => {
+          currentBatch.set(ref, data);
+          opCount++;
+          if (opCount >= 450) {
+              batches.push(currentBatch.commit());
+              currentBatch = writeBatch(db);
+              opCount = 0;
+          }
+      };
+
+      INITIAL_CLASSES.forEach(c => pushToBatch(doc(db, 'classes', c.id), c));
+      INITIAL_TEACHERS.forEach(t => pushToBatch(doc(db, 'teachers', t.id), t));
+      
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+      
       showMessage('success', '✅ 雲端資料庫建置成功！');
     } catch (error) {
       showMessage('error', '❌ 建置失敗：' + error.message);
@@ -153,7 +169,7 @@ export default function App() {
       setAdminPassword('');
       showMessage('success', '✅ 已成功登入為管理者！');
     } else {
-      showMessage('error', '❌ 管理者密碼錯誤');
+      showMessage('error', '❌ 管理者密碼錯誤 (預設 admin888)');
     }
   };
 
@@ -173,7 +189,7 @@ export default function App() {
       showMessage('success', `👨‍🏫 歡迎登入，${teacherName} 老師！`);
       setTeacherPassword('');
     } else {
-      showMessage('error', '❌ 教師密碼錯誤');
+      showMessage('error', '❌ 教師密碼錯誤 (預設 1234)');
     }
   };
 
@@ -233,12 +249,24 @@ export default function App() {
   const saveEditing = async () => {
     showMessage('success', '🔄 正在將課表同步至雲端...');
     try {
-      const oldLessons = lessons.filter(l => l.classId === selectedClass);
-      const deletePromises = oldLessons.map(l => deleteDoc(doc(db, 'lessons', l.id)));
-      await Promise.all(deletePromises);
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
 
-      const newLessons = [];
-      const newTeachersPromises = [];
+      const pushToBatch = (operation, ref, data = null) => {
+        if (operation === 'delete') currentBatch.delete(ref);
+        else currentBatch.set(ref, data);
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      };
+
+      const oldLessons = lessons.filter(l => l.classId === selectedClass);
+      oldLessons.forEach(l => pushToBatch('delete', doc(db, 'lessons', l.id)));
+
       let currentTeachers = [...teachers]; 
 
       Object.keys(editData).forEach(key => {
@@ -264,17 +292,19 @@ export default function App() {
             const newId = `T${Math.floor(Math.random()*100000)}`;
             teacher = { id: newId, name: teacherName, subject: subject || '未知', password: '1234' };
             currentTeachers.push(teacher);
-            newTeachersPromises.push(setDoc(doc(db, 'teachers', teacher.id), teacher));
+            pushToBatch('set', doc(db, 'teachers', teacher.id), teacher);
           }
 
           const lessonId = `L${Date.now()}_${Math.floor(Math.random()*1000)}`;
-          newLessons.push(setDoc(doc(db, 'lessons', lessonId), {
+          pushToBatch('set', doc(db, 'lessons', lessonId), {
             id: lessonId, classId: selectedClass, teacherId: teacher.id, subject, day, period
-          }));
+          });
         }
       });
 
-      await Promise.all([...newTeachersPromises, ...newLessons]);
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+      
       setIsEditing(false);
       showMessage('success', `✅ 儲存成功！`);
     } catch (e) {
@@ -283,20 +313,58 @@ export default function App() {
   };
 
   const executeClearClass = async () => {
-    const oldLessons = lessons.filter(l => l.classId === selectedClass);
-    const deletePromises = oldLessons.map(l => deleteDoc(doc(db, 'lessons', l.id)));
-    await Promise.all(deletePromises);
-    setShowClearClassModal(false);
-    setIsEditing(false);
-    showMessage('success', '🧹 已清空本班課表！');
+    try {
+      const oldLessons = lessons.filter(l => l.classId === selectedClass);
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      oldLessons.forEach(l => {
+        currentBatch.delete(doc(db, 'lessons', l.id));
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      });
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
+      setShowClearClassModal(false);
+      setIsEditing(false);
+      showMessage('success', '🧹 已清空本班課表！');
+    } catch(e) {
+      showMessage('error', '❌ 刪除失敗：' + e.message);
+    }
   };
 
   const executeClearAll = async () => {
-    const deletePromises = lessons.map(l => deleteDoc(doc(db, 'lessons', l.id)));
-    await Promise.all(deletePromises);
-    setShowClearAllModal(false);
-    setIsEditing(false);
-    showMessage('success', '🔥 已清空所有課表！');
+    try {
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      lessons.forEach(l => {
+        currentBatch.delete(doc(db, 'lessons', l.id));
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      });
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
+      setShowClearAllModal(false);
+      setIsEditing(false);
+      showMessage('success', '🔥 已清空所有課表！');
+    } catch(e) {
+      showMessage('error', '❌ 刪除失敗：' + e.message);
+    }
   };
 
   const handleAddClass = async () => {
@@ -1082,7 +1150,7 @@ export default function App() {
                   {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>)}
                 </select>
                 <div className="flex gap-2">
-                  <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼 (預設1234)" className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-blue-500" />
+                  <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-blue-500" />
                   <button onClick={handleTeacherLogin} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm">登入</button>
                 </div>
               </div>
@@ -1206,7 +1274,6 @@ export default function App() {
         </div>
       )}
 
-      {/* CSV 匯入 Modal */}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
@@ -1277,12 +1344,29 @@ export default function App() {
                   
                   if (parsedLessons.length > 0) {
                      try {
-                        const promises = [];
-                        parsedLessons.forEach(l => promises.push(setDoc(doc(db, 'lessons', l.id), l)));
-                        newClassesMap.forEach(c => promises.push(setDoc(doc(db, 'classes', c.id), c)));
-                        newTeachersMap.forEach(t => promises.push(setDoc(doc(db, 'teachers', t.id), t)));
+                        const batches = [];
+                        let currentBatch = writeBatch(db);
+                        let opCount = 0;
+
+                        const pushToBatch = (ref, data) => {
+                            currentBatch.set(ref, data);
+                            opCount++;
+                            if (opCount >= 450) {
+                                batches.push(currentBatch.commit());
+                                currentBatch = writeBatch(db);
+                                opCount = 0;
+                            }
+                        };
+
+                        parsedLessons.forEach(l => pushToBatch(doc(db, 'lessons', l.id), l));
+                        newClassesMap.forEach(c => pushToBatch(doc(db, 'classes', c.id), c));
+                        newTeachersMap.forEach(t => pushToBatch(doc(db, 'teachers', t.id), t));
                         
-                        await Promise.all(promises);
+                        if (opCount > 0) {
+                            batches.push(currentBatch.commit());
+                        }
+                        
+                        await Promise.all(batches);
                         setShowImportModal(false);
                         showMessage('success', `✅ 成功匯入 ${parsedLessons.length} 筆課表至雲端！`);
                      } catch(err) {
