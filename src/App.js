@@ -68,6 +68,7 @@ export default function App() {
   const [requestTargetLesson, setRequestTargetLesson] = useState(null);
   const [editRequestData, setEditRequestData] = useState(null);
   const [filterTeacherId, setFilterTeacherId] = useState(''); 
+  const [filterPrintClassId, setFilterPrintClassId] = useState('');
 
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   
@@ -78,6 +79,7 @@ export default function App() {
   const [newClassName, setNewClassName] = useState('');
   const [showDeleteClassModal, setShowDeleteClassModal] = useState(false);
   const [classToDelete, setClassToDelete] = useState(null);
+  const [showDeleteAllClassesModal, setShowDeleteAllClassesModal] = useState(false);
   const [showClearClassModal, setShowClearClassModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -87,39 +89,54 @@ export default function App() {
   const [newTeacherSubject, setNewTeacherSubject] = useState('');
   const [showDeleteTeacherModal, setShowDeleteTeacherModal] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState(null);
+  const [showDeleteAllTeachersModal, setShowDeleteAllTeachersModal] = useState(false);
 
   useEffect(() => {
+    const handleFirebaseError = (err) => {
+      console.error("Firebase Database Error:", err);
+      if (err.code === 'permission-denied') {
+        showMessage('error', '❌ 讀取失敗：Firebase 權限不足，請至後台修改 Security Rules！');
+      } else if (err.code === 'resource-exhausted') {
+        showMessage('error', '❌ 讀取失敗：已達到 Firebase 每日免費配額限制！');
+      }
+    };
+
     const unsubClasses = onSnapshot(collection(db, 'classes'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.id.localeCompare(b.id));
       setClasses(data);
       if (data.length > 0 && !selectedClass) setSelectedClass(data[0].id);
-    });
+    }, handleFirebaseError);
 
     const unsubTeachers = onSnapshot(collection(db, 'teachers'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
       setTeachers(data);
       if (data.length > 0 && !selectedLoginTeacher) setSelectedLoginTeacher(data[0].id);
       if (data.length > 0 && !selectedTeacher) setSelectedTeacher(data[0].id);
-    });
+    }, handleFirebaseError);
 
     const unsubLessons = onSnapshot(collection(db, 'lessons'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
       setLessons(data);
-    });
+    }, handleFirebaseError);
 
     const unsubRequests = onSnapshot(collection(db, 'requests'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
       setRequests(data);
-    });
+    }, handleFirebaseError);
 
-    setTimeout(() => setIsDataLoaded(true), 1000);
+    setTimeout(() => setIsDataLoaded(true), 800);
 
-    return () => { unsubClasses(); unsubTeachers(); unsubLessons(); unsubRequests(); };
+    return () => { 
+      unsubClasses(); 
+      unsubTeachers(); 
+      unsubLessons(); 
+      unsubRequests(); 
+    };
   }, []);
 
   const showMessage = (type, message) => {
     setImportStatus({ type, message });
-    setTimeout(() => setImportStatus({ type: '', message: '' }), 4000);
+    setTimeout(() => setImportStatus({ type: '', message: '' }), 6000);
   };
 
   const initializeDatabase = async () => {
@@ -130,13 +147,13 @@ export default function App() {
       let opCount = 0;
 
       const pushToBatch = (ref, data) => {
-          currentBatch.set(ref, data);
-          opCount++;
-          if (opCount >= 450) {
-              batches.push(currentBatch.commit());
-              currentBatch = writeBatch(db);
-              opCount = 0;
-          }
+        currentBatch.set(ref, data);
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
       };
 
       INITIAL_CLASSES.forEach(c => pushToBatch(doc(db, 'classes', c.id), c));
@@ -146,19 +163,24 @@ export default function App() {
       await Promise.all(batches);
       
       showMessage('success', '✅ 雲端資料庫建置成功！');
-    } catch (error) {
-      showMessage('error', '❌ 建置失敗：' + error.message);
+    } catch (err) {
+      if (err.code === 'permission-denied') showMessage('error', '❌ 建置失敗：Firebase Security Rules 阻擋！');
+      else showMessage('error', '❌ 建置失敗：' + err.message);
     }
   };
 
   const jumpToTeacher = (teacherId) => {
+    if (!teacherId) return;
     setSelectedTeacher(teacherId);
     setViewMode('teacher');
+    setActiveTab('schedule');
   };
 
   const jumpToClass = (classId) => {
+    if (!classId) return;
     setSelectedClass(classId);
     setViewMode('class');
+    setActiveTab('schedule');
   };
 
   const handleAdminLogin = () => {
@@ -169,7 +191,7 @@ export default function App() {
       setAdminPassword('');
       showMessage('success', '✅ 已成功登入為管理者！');
     } else {
-      showMessage('error', '❌ 管理者密碼錯誤 (預設 admin888)');
+      showMessage('error', '❌ 管理者密碼錯誤');
     }
   };
 
@@ -189,7 +211,7 @@ export default function App() {
       showMessage('success', `👨‍🏫 歡迎登入，${teacherName} 老師！`);
       setTeacherPassword('');
     } else {
-      showMessage('error', '❌ 教師密碼錯誤 (預設 1234)');
+      showMessage('error', '❌ 教師密碼錯誤');
     }
   };
 
@@ -269,9 +291,9 @@ export default function App() {
 
       let currentTeachers = [...teachers]; 
 
-      Object.keys(editData).forEach(key => {
+      for (const key of Object.keys(editData)) {
         const text = (editData[key] || '').trim();
-        if (!text) return; 
+        if (!text) continue; 
 
         const [dayStr, periodStr] = key.split('_');
         const day = parseInt(dayStr);
@@ -295,30 +317,32 @@ export default function App() {
             pushToBatch('set', doc(db, 'teachers', teacher.id), teacher);
           }
 
-          const lessonId = `L${Date.now()}_${Math.floor(Math.random()*1000)}`;
+          const lessonId = `L_${selectedClass}_${day}_${period}_${Date.now()}`;
           pushToBatch('set', doc(db, 'lessons', lessonId), {
             id: lessonId, classId: selectedClass, teacherId: teacher.id, subject, day, period
           });
         }
-      });
+      }
 
       if (opCount > 0) batches.push(currentBatch.commit());
       await Promise.all(batches);
       
       setIsEditing(false);
       showMessage('success', `✅ 儲存成功！`);
-    } catch (e) {
-      showMessage('error', '❌ 儲存失敗：' + e.message);
+    } catch (err) {
+      if (err.code === 'permission-denied') showMessage('error', '❌ 儲存失敗：無寫入權限 (Security Rules 阻擋)！');
+      else if (err.code === 'resource-exhausted') showMessage('error', '❌ 儲存失敗：超過 Firebase 每日寫入配額！');
+      else showMessage('error', '❌ 儲存失敗：' + err.message);
     }
   };
 
   const executeClearClass = async () => {
     try {
-      const oldLessons = lessons.filter(l => l.classId === selectedClass);
       const batches = [];
       let currentBatch = writeBatch(db);
       let opCount = 0;
-
+      
+      const oldLessons = lessons.filter(l => l.classId === selectedClass);
       oldLessons.forEach(l => {
         currentBatch.delete(doc(db, 'lessons', l.id));
         opCount++;
@@ -328,15 +352,15 @@ export default function App() {
           opCount = 0;
         }
       });
-
+      
       if (opCount > 0) batches.push(currentBatch.commit());
       await Promise.all(batches);
 
       setShowClearClassModal(false);
       setIsEditing(false);
       showMessage('success', '🧹 已清空本班課表！');
-    } catch(e) {
-      showMessage('error', '❌ 刪除失敗：' + e.message);
+    } catch (err) {
+      showMessage('error', '❌ 清空失敗：' + err.message);
     }
   };
 
@@ -362,8 +386,9 @@ export default function App() {
       setShowClearAllModal(false);
       setIsEditing(false);
       showMessage('success', '🔥 已清空所有課表！');
-    } catch(e) {
-      showMessage('error', '❌ 刪除失敗：' + e.message);
+    } catch(err) {
+      if (err.code === 'permission-denied') showMessage('error', '❌ 失敗：Firebase 權限不足！');
+      else showMessage('error', '❌ 刪除失敗：' + err.message);
     }
   };
 
@@ -388,11 +413,58 @@ export default function App() {
     }
 
     try {
-      await deleteDoc(doc(db, 'classes', targetId));
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      currentBatch.delete(doc(db, 'classes', targetId));
+      opCount++;
+
       const oldLessons = lessons.filter(l => l.classId === targetId);
-      const deletePromises = oldLessons.map(l => deleteDoc(doc(db, 'lessons', l.id)));
-      await Promise.all(deletePromises);
+      oldLessons.forEach(l => {
+        currentBatch.delete(doc(db, 'lessons', l.id));
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      });
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
       showMessage('success', '🗑️ 已刪除班級');
+    } catch (e) {
+      showMessage('error', '❌ 刪除失敗：' + e.message);
+    }
+  };
+
+  const executeDeleteAllClasses = async () => {
+    try {
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      const pushToDelete = (ref) => {
+        currentBatch.delete(ref);
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      };
+
+      classes.forEach(c => pushToDelete(doc(db, 'classes', c.id)));
+      lessons.forEach(l => pushToDelete(doc(db, 'lessons', l.id)));
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
+      setShowDeleteAllClassesModal(false);
+      setSelectedClass('');
+      showMessage('success', '🗑️ 已刪除所有班級及相關課表');
     } catch (e) {
       showMessage('error', '❌ 刪除失敗：' + e.message);
     }
@@ -426,11 +498,58 @@ export default function App() {
     }
 
     try {
-      await deleteDoc(doc(db, 'teachers', targetId));
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      currentBatch.delete(doc(db, 'teachers', targetId));
+      opCount++;
+
       const oldLessons = lessons.filter(l => l.teacherId === targetId);
-      const deletePromises = oldLessons.map(l => deleteDoc(doc(db, 'lessons', l.id)));
-      await Promise.all(deletePromises);
+      oldLessons.forEach(l => {
+        currentBatch.delete(doc(db, 'lessons', l.id));
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      });
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
       showMessage('success', '🗑️ 已刪除教師及其所有排課紀錄');
+    } catch (e) {
+      showMessage('error', '❌ 刪除失敗：' + e.message);
+    }
+  };
+
+  const executeDeleteAllTeachers = async () => {
+    try {
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      const pushToDelete = (ref) => {
+        currentBatch.delete(ref);
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      };
+
+      teachers.forEach(t => pushToDelete(doc(db, 'teachers', t.id)));
+      lessons.forEach(l => pushToDelete(doc(db, 'lessons', l.id)));
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
+      setShowDeleteAllTeachersModal(false);
+      setSelectedTeacher('');
+      showMessage('success', '🗑️ 已刪除所有教師及相關排課紀錄');
     } catch (e) {
       showMessage('error', '❌ 刪除失敗：' + e.message);
     }
@@ -496,7 +615,15 @@ export default function App() {
     const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : new Date().toISOString().split('T')[0]); 
     const targetClass = classes.find(c => c.id === lesson.classId) || { name: lesson.classId };
 
+    const requesterTeacherObj = teachers.find(t => t.id === loggedTeacherId);
     const allOtherTeachers = teachers.filter(t => t.id !== loggedTeacherId);
+
+    const prioritizedTeachers = useMemo(() => {
+      if (requestType !== 'sub') return allOtherTeachers;
+      const sameSubject = allOtherTeachers.filter(t => t.subject === requesterTeacherObj?.subject);
+      const otherTeachers = allOtherTeachers.filter(t => t.subject !== requesterTeacherObj?.subject);
+      return [...sameSubject, ...otherTeachers];
+    }, [allOtherTeachers, requestType, requesterTeacherObj]);
 
     const targetTeacherLessons = useMemo(() => {
       if (!targetTeacher) return [];
@@ -539,8 +666,9 @@ export default function App() {
           onClose();
           showMessage('success', '📝 申請已送出，等待教務處審核！');
         }
-      } catch (e) {
-        showMessage('error', '❌ 寫入失敗：' + e.message);
+      } catch (err) {
+        if (err.code === 'permission-denied') showMessage('error', '❌ 寫入失敗：無權限 (Security Rules 阻擋)');
+        else showMessage('error', '❌ 寫入失敗：' + err.message);
       }
     };
 
@@ -548,7 +676,7 @@ export default function App() {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
           <div className="bg-blue-700 p-4 flex justify-between items-center text-white">
-            <h3 className="text-lg font-bold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5" /> 發起調代課申請</h3>
+            <h3 className="text-lg font-bold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5"/> 發起調代課申請</h3>
             <button onClick={onClose} className="hover:bg-blue-800 p-1 rounded-full"><X className="w-5 h-5"/></button>
           </div>
           
@@ -575,11 +703,13 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">選擇代課老師</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">選擇代課老師 (已優先排列同科目)</label>
                   <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white font-medium focus:ring-blue-500">
                     <option value="">-- 請選擇代課老師 --</option>
-                    {allOtherTeachers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
+                    {prioritizedTeachers.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.subject}) {t.subject === requesterTeacherObj?.subject ? ' ⭐[同科目]' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -643,12 +773,20 @@ export default function App() {
       displayRequests = displayRequests.filter(r => r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId);
     }
 
+    if (filterPrintClassId) {
+      displayRequests = displayRequests.filter(r => {
+        const lesson = lessons.find(l => l.id === r.lessonId);
+        return lesson && lesson.classId === filterPrintClassId;
+      });
+    }
+
     const handleAction = async (id, newStatus) => {
       try {
         await updateDoc(doc(db, 'requests', id), { status: newStatus });
         showMessage('success', `✅ 申請狀態已更新`);
-      } catch(e) {
-        showMessage('error', '❌ 更新失敗：' + e.message);
+      } catch(err) {
+        if (err.code === 'permission-denied') showMessage('error', '❌ 寫入失敗：無權限 (Security Rules 阻擋)');
+        else showMessage('error', '❌ 更新失敗：' + err.message);
       }
     };
 
@@ -659,11 +797,26 @@ export default function App() {
         return;
       }
       try {
-        const promises = pendingReqs.map(r => updateDoc(doc(db, 'requests', r.id), { status: 'approved' }));
-        await Promise.all(promises);
+        const batches = [];
+        let currentBatch = writeBatch(db);
+        let opCount = 0;
+
+        pendingReqs.forEach(r => {
+          currentBatch.update(doc(db, 'requests', r.id), { status: 'approved' });
+          opCount++;
+          if (opCount >= 450) {
+            batches.push(currentBatch.commit());
+            currentBatch = writeBatch(db);
+            opCount = 0;
+          }
+        });
+
+        if (opCount > 0) batches.push(currentBatch.commit());
+        await Promise.all(batches);
+
         showMessage('success', `✅ 已成功批次核准 ${teachers.find(t=>t.id===teacherId)?.name} 老師的所有申請！`);
-      } catch(e) {
-        showMessage('error', '❌ 批次核准失敗：' + e.message);
+      } catch(err) {
+        showMessage('error', '❌ 批次核准失敗：' + err.message);
       }
     };
 
@@ -677,13 +830,16 @@ export default function App() {
     };
 
     const selectedTeacherObj = teachers.find(t => t.id === filterTeacherId);
+    const selectedPrintClassObj = classes.find(c => c.id === filterPrintClassId);
     const pendingCount = filterTeacherId ? requests.filter(r => r.requesterId === filterTeacherId && r.status === 'pending').length : 0;
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
           <h1 className="text-2xl font-bold">嘉義縣立嘉新國民中學 調代課審核總表</h1>
-          {selectedTeacherObj ? (
+          {selectedPrintClassObj ? (
+            <h2 className="text-lg font-bold mt-2">班級：{selectedPrintClassObj.name} 專屬調代課通知表</h2>
+          ) : selectedTeacherObj ? (
             <h2 className="text-lg font-bold mt-2">教師：{selectedTeacherObj.name} ({selectedTeacherObj.subject})</h2>
           ) : (
             <h2 className="text-lg font-bold mt-2">全校總表</h2>
@@ -697,10 +853,19 @@ export default function App() {
               <FileText className="w-5 h-5 text-blue-600"/> 
               {userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄'}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">可透過下方篩選檢視特定教師之申請，並進行批次核准或寄送總表</p>
+            <p className="text-xs text-slate-500 mt-0.5">可透過下方篩選檢視特定教師或班級之申請，並進行列印或寄送</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <select 
+               value={filterPrintClassId} 
+               onChange={(e) => setFilterPrintClassId(e.target.value)} 
+               className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs"
+            >
+               <option value="">-- 全部班級 (列印篩選) --</option>
+               {classes.map(c => <option key={c.id} value={c.id}>列印班級：{c.name}</option>)}
+            </select>
+
             <select 
                value={filterTeacherId} 
                onChange={(e) => setFilterTeacherId(e.target.value)} 
@@ -745,7 +910,7 @@ export default function App() {
         
         <div className="overflow-x-auto p-4">
           {displayRequests.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 font-medium">目前沒有任何申請紀錄。</div>
+            <div className="text-center py-12 text-slate-400 font-medium">目前沒有符合條件的申請紀錄。</div>
           ) : (
             <table className="w-full text-sm text-left border-collapse">
               <thead>
@@ -880,7 +1045,11 @@ export default function App() {
                       <td key={dayIdx} className="border-b border-l border-gray-100 p-2 relative h-20 group">
                         {lesson ? (
                           <div 
-                            onClick={() => { if(isMyOwnSchedule) setRequestTargetLesson({lesson, day: dayNum, period: period.id}); }}
+                            onClick={(e) => { 
+                              if(isMyOwnSchedule) {
+                                setRequestTargetLesson({lesson, day: dayNum, period: period.id}); 
+                              }
+                            }}
                             className={`h-full flex flex-col items-center justify-center rounded-xl p-2 
                               ${period.isTutor ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'} 
                               shadow-xs relative transition-all group-hover:shadow-md
@@ -889,18 +1058,28 @@ export default function App() {
                           >
                             {viewMode === 'class' ? (
                               <>
-                                <div className="font-bold text-blue-900 text-sm mb-1">{lesson.subject}</div>
-                                <button onClick={() => jumpToTeacher(lesson.teacherId)} className="text-xs bg-white text-blue-700 px-2 py-0.5 rounded shadow-xs hover:bg-blue-600 hover:text-white transition flex items-center gap-1">
+                                <div className="font-bold text-blue-900 text-sm mb-1 relative z-10">{lesson.subject}</div>
+                                <button 
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
+                                  className="text-xs bg-white text-blue-700 px-2 py-0.5 rounded shadow-xs hover:bg-blue-600 hover:text-white transition flex items-center gap-1 hover:underline relative z-10"
+                                >
                                   <User className="w-3 h-3" /> {teacherName}
                                 </button>
                               </>
                             ) : (
                               <>
-                                <div className="font-bold text-blue-900 text-sm mb-1">{className}</div>
-                                <div className="text-xs text-blue-700">{lesson.subject}</div>
+                                <button 
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
+                                  className="font-bold text-blue-900 text-sm mb-1 hover:underline cursor-pointer relative z-10"
+                                >
+                                  {className}
+                                </button>
+                                <div className="text-xs text-blue-700 relative z-10">{lesson.subject}</div>
+                                
+                                {/* 調代課觸發遮罩：加入 pointer-events-none 確保不干擾按鈕點擊，加入 z-0 置底 */}
                                 {isMyOwnSchedule && (
-                                  <div className="absolute inset-0 bg-indigo-600/90 text-white rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center font-bold text-xs transition-opacity">
-                                    ✨ 點擊申請調代
+                                  <div className="absolute inset-0 bg-indigo-600/90 text-white rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0">
+                                    ✨ 點擊空白處申請調代
                                   </div>
                                 )}
                               </>
@@ -990,7 +1169,7 @@ export default function App() {
         <div className="space-y-6">
           {importStatus.message && (
             <div className={`print:hidden border px-4 py-3 rounded-xl flex items-center gap-2 font-bold shadow-sm ${importStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-              <CheckCircle2 className="w-5 h-5"/> {importStatus.message}
+              {importStatus.type === 'error' ? <AlertTriangle className="w-5 h-5"/> : <CheckCircle2 className="w-5 h-5"/>} {importStatus.message}
             </div>
           )}
 
@@ -1028,6 +1207,11 @@ export default function App() {
                               <Trash2 className="w-4 h-4"/> 刪除
                             </button>
                           )}
+                          {classes.length > 0 && (
+                            <button onClick={() => setShowDeleteAllClassesModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
+                              <AlertTriangle className="w-4 h-4"/> 刪除所有班級
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1050,6 +1234,11 @@ export default function App() {
                           {teachers.length > 0 && (
                             <button onClick={() => { setTeacherToDelete(selectedTeacher); setShowDeleteTeacherModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center gap-1">
                               <Trash2 className="w-4 h-4"/> 刪除
+                            </button>
+                          )}
+                          {teachers.length > 0 && (
+                            <button onClick={() => setShowDeleteAllTeachersModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
+                              <AlertTriangle className="w-4 h-4"/> 刪除所有教師
                             </button>
                           )}
                         </div>
@@ -1098,7 +1287,7 @@ export default function App() {
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
-      {/* 修改密碼 Modal */}
+      {}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1135,7 +1324,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 登入 Modal */}
+      {}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1177,7 +1366,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 新增班級 Modal */}
+      {}
       {showAddClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -1239,6 +1428,19 @@ export default function App() {
         </div>
       )}
 
+      {showDeleteAllClassesModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">刪除「所有班級」？</h3>
+            <p className="text-gray-600 text-sm mb-6">此操作將清空系統內所有班級名單與相關課表，且無法復原！</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeleteAllClassesModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
+              <button onClick={executeDeleteAllClasses} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-black">確認全部刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddTeacherModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -1274,6 +1476,20 @@ export default function App() {
         </div>
       )}
 
+      {showDeleteAllTeachersModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">刪除「所有教師」？</h3>
+            <p className="text-gray-600 text-sm mb-6">此操作將清空系統內所有教師名單與相關課表，且無法復原！</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeleteAllTeachersModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
+              <button onClick={executeDeleteAllTeachers} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-black">確認全部刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
@@ -1288,13 +1504,13 @@ export default function App() {
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                showMessage('success', '🔄 正在讀取並寫入雲端...');
+                showMessage('success', '🔄 正在讀取並準備寫入雲端 (請勿關閉網頁)...');
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                   const text = evt.target.result;
                   const lines = text.split('\n').filter(line => line.trim() !== '');
                   if (lines.length < 2) {
-                    showMessage('error', '檔案內容空白或格式不符');
+                    showMessage('error', '❌ 檔案內容空白或格式不符');
                     return;
                   }
                   
@@ -1330,7 +1546,7 @@ export default function App() {
 
                     const day = parseInt(dStr);
                     const period = isNaN(parseInt(pStr)) ? pStr : parseInt(pStr);
-                    const lessonId = `IMP_${Date.now()}_${i}`;
+                    const lessonId = `IMP_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`;
                     
                     parsedLessons.push({
                       id: lessonId,
@@ -1370,7 +1586,14 @@ export default function App() {
                         setShowImportModal(false);
                         showMessage('success', `✅ 成功匯入 ${parsedLessons.length} 筆課表至雲端！`);
                      } catch(err) {
-                        showMessage('error', '❌ 寫入雲端失敗：' + err.message);
+                        console.error("Batch Import Error:", err);
+                        if (err.code === 'permission-denied') {
+                          showMessage('error', '❌ 寫入失敗：權限不足，請檢查 Firebase Security Rules！');
+                        } else if (err.code === 'resource-exhausted') {
+                          showMessage('error', '❌ 寫入失敗：超過 Firebase 每日免費寫入配額！');
+                        } else {
+                          showMessage('error', '❌ 寫入雲端失敗：' + err.message);
+                        }
                      }
                   } else {
                      showMessage('error', '❌ 解析失敗，請確認格式');
