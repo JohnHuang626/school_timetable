@@ -642,7 +642,14 @@ export default function App() {
 
     const targetTeacherLessons = useMemo(() => {
       if (!targetTeacher) return [];
-      return lessons.filter(l => l.teacherId === targetTeacher).sort((a,b) => a.day - b.day || a.period - b.period);
+      return lessons
+        .filter(l => l.teacherId === targetTeacher)
+        .sort((a, b) => {
+          if (a.day !== b.day) return a.day - b.day;
+          const periodA = parseInt(a.period) || 0;
+          const periodB = parseInt(b.period) || 0;
+          return periodA - periodB;
+        });
     }, [targetTeacher, lessons]);
 
     const handleSubmit = async () => {
@@ -763,16 +770,29 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-emerald-700 mb-1">對方這堂課第幾節</label>
-                      <select value={targetLessonId} onChange={e => setTargetLessonId(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
-                        <option value="">-- 選擇對方的課堂 --</option>
-                        {targetTeacherLessons.map(l => {
-                          const cName = classes.find(c => c.id === l.classId)?.name || l.classId;
-                          return (
-                            <option key={l.id} value={l.id}>
-                              {DAYS[l.day-1]} 第 {l.period} 節 - {cName}
-                            </option>
-                          )
-                        })}
+                      <select 
+                        value={targetLessonId} 
+                        onChange={e => setTargetLessonId(e.target.value)} 
+                        disabled={!targetTeacher || targetTeacherLessons.length === 0}
+                        className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm disabled:bg-gray-100 disabled:text-gray-400"
+                      >
+                        {!targetTeacher ? (
+                          <option value="">-- 請先選老師 --</option>
+                        ) : targetTeacherLessons.length === 0 ? (
+                          <option value="">-- 該師無課表 --</option>
+                        ) : (
+                          <>
+                            <option value="">-- 選擇對方課堂 --</option>
+                            {targetTeacherLessons.map(l => {
+                              const cName = classes.find(c => c.id === l.classId)?.name || l.classId;
+                              return (
+                                <option key={l.id} value={l.id}>
+                                  {DAYS[l.day-1]}第{l.period}節 {cName}({l.subject})
+                                </option>
+                              )
+                            })}
+                          </>
+                        )}
                       </select>
                     </div>
                   </div>
