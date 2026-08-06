@@ -696,11 +696,14 @@ export default function App() {
       }
     }
     body += `\n教務處已完成審核。特此通知相關人員。\n\n嘉新國中教務處 敬上`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    // 使用 Gmail 網頁版開啟，並自動帶入主旨與內文
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, '_blank');
   };
 
   const handleSendBulkEmail = (teacherName, teacherReqs) => {
-    const subject = encodeURIComponent(`【嘉新國中】調代課總表通知 - ${teacherName}老師`);
+    const subject = `【嘉新國中】調代課總表通知 - ${teacherName}老師`;
     let body = `敬愛的老師們 您好：\n\n`;
     body += `以下為 ${teacherName} 老師近期已核准之調代課申請總表：\n\n`;
     teacherReqs.forEach((r, idx) => {
@@ -715,7 +718,10 @@ export default function App() {
       body += `---------------------------\n`;
     });
     body += `\n特此通知相關授課與代課老師，感謝配合！\n\n嘉新國中教務處 敬上`;
-    window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(body)}`;
+    
+    // 使用 Gmail 網頁版開啟，並自動帶入主旨與內文
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, '_blank');
   };
 
   const RequestModal = ({ data, editReq, onClose }) => {
@@ -982,6 +988,12 @@ export default function App() {
     const selectedPrintClassObj = classes.find(c => c.id === filterPrintClassId);
     const currentPendingCount = displayRequests.filter(r => r.status === 'pending').length;
 
+    // 清除所有篩選，回到全校總表
+    const resetFilters = () => {
+      setFilterTeacherId('');
+      setFilterPrintClassId('');
+    };
+
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
@@ -998,11 +1010,19 @@ export default function App() {
 
         <div className="p-4 border-b bg-slate-50 flex justify-between items-center print:hidden flex-wrap gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <h2 
+              onClick={resetFilters} 
+              className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
+              title="點擊返回全校總表"
+            >
               <FileText className="w-5 h-5 text-blue-600"/> 
-              {userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄'}
+              <span className="group-hover:underline">
+                {filterTeacherId || filterPrintClassId 
+                  ? `篩選檢視中 (點擊此處返回全校總表)` 
+                  : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄')}
+              </span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">可透過下方篩選檢視特定教師或班級之申請，並進行列印或寄送</p>
+            <p className="text-xs text-slate-500 mt-0.5">點擊列表中的老師姓名或班級可進行快速篩選，隨時點擊上方標題可返回全校總表</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -1012,7 +1032,7 @@ export default function App() {
                className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs"
             >
                <option value="">-- 全部班級 (列印篩選) --</option>
-               {classes.map(c => <option key={c.id} value={c.id}>列印班級：{c.name}</option>)}
+               {classes.map(c => <option key={c.id} value={c.id}>篩選班級：{c.name}</option>)}
             </select>
 
             <select 
@@ -1024,24 +1044,33 @@ export default function App() {
                {teachers.map(t => <option key={t.id} value={t.id}>篩選：{t.name} 老師</option>)}
             </select>
 
+            {(filterTeacherId || filterPrintClassId) && (
+              <button 
+                onClick={resetFilters} 
+                className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-300 transition-colors"
+              >
+                清除篩選
+              </button>
+            )}
+
             {userRole === 'admin' && (
               <div className="flex items-center gap-1.5 bg-slate-200/50 border border-slate-300 px-3 py-1.5 rounded-lg">
                 <span className="text-xs font-bold text-slate-700">
-                  {filterTeacherId ? `${selectedTeacherObj?.name} 待審` : '目前列表待審'}: {currentPendingCount}張
+                  {filterTeacherId || filterPrintClassId ? '目前列表待審' : '全校待審'}: {currentPendingCount}張
                 </span>
                 <button 
                   onClick={() => handleBatchAction('approved')} 
                   disabled={currentPendingCount === 0}
                   className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5"/> 全部核准
+                  <CheckCircle2 className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次核准' : '全部核准'}
                 </button>
                 <button 
                   onClick={() => handleBatchAction('rejected')} 
                   disabled={currentPendingCount === 0}
                   className="px-2.5 py-1 bg-red-600 text-white rounded-md text-xs font-bold hover:bg-red-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
                 >
-                  <X className="w-3.5 h-3.5"/> 全部退回
+                  <X className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次退回' : '全部退回'}
                 </button>
                 
                 {filterTeacherId && (
@@ -1090,8 +1119,9 @@ export default function App() {
                   const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
                   const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
                   const lesson = lessons.find(l => l.id === req.lessonId);
-                  const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
-                  const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節 (${className})` : '未知';
+                  const classObj = classes.find(c => c.id === lesson?.classId);
+                  const className = classObj?.name || '未知班級';
+                  const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
                   
                   return (
                     <tr key={req.id} className="border-b hover:bg-slate-50 print:border-black">
@@ -1106,22 +1136,34 @@ export default function App() {
                         )}
                       </td>
                       <td className="p-3 font-bold text-slate-800">
-                        {userRole === 'admin' ? (
-                          <button onClick={() => setFilterTeacherId(req.requesterId)} className="hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors group">
-                            {requester} <Search className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
-                          </button>
-                        ) : (
-                          requester
-                        )}
+                        <button onClick={() => setFilterTeacherId(req.requesterId)} className="hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors group">
+                          {requester} <Search className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
+                        </button>
                       </td>
                       <td className="p-3">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-800'}`}>
                           {req.type === 'sub' ? `請假 (${req.reason})` : '調課'}
                         </span>
                       </td>
-                      <td className="p-3">{lessonTime} - {lesson?.subject}</td>
+                      <td className="p-3">
+                        {lesson ? (
+                          <div className="flex items-center gap-1.5">
+                            <span>{lessonTime}</span>
+                            <button 
+                              onClick={() => lesson.classId && setFilterPrintClassId(lesson.classId)}
+                              className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 font-bold transition-colors flex items-center gap-1"
+                              title="點擊篩選此班級"
+                            >
+                              {className} <Search className="w-2.5 h-2.5"/>
+                            </button>
+                            <span className="text-slate-500 text-xs">({lesson.subject})</span>
+                          </div>
+                        ) : (
+                          <span>未知</span>
+                        )}
+                      </td>
                       <td className="p-3 font-bold text-blue-600">
-                        {userRole === 'admin' && req.targetTeacherId ? (
+                        {req.targetTeacherId ? (
                           <button onClick={() => setFilterTeacherId(req.targetTeacherId)} className="hover:text-blue-800 hover:underline flex items-center gap-1 transition-colors group">
                             {target} <Search className="w-3 h-3 text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
                           </button>
