@@ -629,15 +629,42 @@ export default function App() {
     }
   };
 
+  const SUBJECT_PRIORITY = ['國文', '英文', '英語', '數學', '自然', '理化', '生物', '地球科學', '地理', '歷史', '公民'];
+
+  const enhancedTeachers = useMemo(() => {
+    return teachers.map(t => {
+      const tLessons = lessons.filter(l => l.teacherId === t.id);
+      let displaySubject = t.subject || '無';
+      
+      if (tLessons.length > 0) {
+        // 取得該名老師實際上課的所有不重複科目
+        const uniqueSubjects = [...new Set(tLessons.map(l => l.subject))];
+        if (uniqueSubjects.length > 1) {
+          uniqueSubjects.sort((a, b) => {
+            let indexA = SUBJECT_PRIORITY.findIndex(p => a.includes(p));
+            let indexB = SUBJECT_PRIORITY.findIndex(p => b.includes(p));
+            // 如果不在優先名單內，賦予較大的 index 以往後排
+            indexA = indexA === -1 ? 999 : indexA;
+            indexB = indexB === -1 ? 999 : indexB;
+            return indexA - indexB;
+          });
+        }
+        displaySubject = uniqueSubjects[0]; // 取排序後最高優先級的科目
+      }
+      
+      return { ...t, displaySubject };
+    });
+  }, [teachers, lessons]);
+
   const sortedTeachers = useMemo(() => {
-    let list = [...teachers];
+    let list = [...enhancedTeachers];
     if (teacherSortMode === 'name') {
       list.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { collation: 'stroke' }));
     } else if (teacherSortMode === 'subject') {
-      list.sort((a, b) => (a.subject || '').localeCompare(b.subject || '', 'zh-TW'));
+      list.sort((a, b) => (a.displaySubject || '').localeCompare(b.displaySubject || '', 'zh-TW'));
     }
     return list;
-  }, [teachers, teacherSortMode]);
+  }, [enhancedTeachers, teacherSortMode]);
 
   const handleSendEmail = (req) => {
     const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
@@ -704,13 +731,13 @@ export default function App() {
     const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : new Date().toISOString().split('T')[0]); 
     const targetClass = classes.find(c => c.id === lesson.classId) || { name: lesson.classId };
 
-    const requesterTeacherObj = teachers.find(t => t.id === loggedTeacherId);
-    const allOtherTeachers = teachers.filter(t => t.id !== loggedTeacherId);
+    const requesterTeacherObj = enhancedTeachers.find(t => t.id === loggedTeacherId);
+    const allOtherTeachers = enhancedTeachers.filter(t => t.id !== loggedTeacherId);
 
     const prioritizedTeachers = useMemo(() => {
       if (requestType !== 'sub') return allOtherTeachers;
-      const sameSubject = allOtherTeachers.filter(t => t.subject === requesterTeacherObj?.subject);
-      const otherTeachers = allOtherTeachers.filter(t => t.subject !== requesterTeacherObj?.subject);
+      const sameSubject = allOtherTeachers.filter(t => t.displaySubject === requesterTeacherObj?.displaySubject);
+      const otherTeachers = allOtherTeachers.filter(t => t.displaySubject !== requesterTeacherObj?.displaySubject);
       return [...sameSubject, ...otherTeachers];
     }, [allOtherTeachers, requestType, requesterTeacherObj]);
 
@@ -809,7 +836,7 @@ export default function App() {
                     <option value="">-- 請選擇代課老師 --</option>
                     {prioritizedTeachers.map(t => (
                       <option key={t.id} value={t.id}>
-                        {t.name} ({t.subject}) {t.subject === requesterTeacherObj?.subject ? ' ⭐[同科目]' : ''}
+                        {t.name} ({t.displaySubject}) {t.displaySubject === requesterTeacherObj?.displaySubject ? ' ⭐[同科目]' : ''}
                       </option>
                     ))}
                   </select>
@@ -833,7 +860,7 @@ export default function App() {
                     <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
                       <option value="">-- 請選擇調課老師 --</option>
                       {allOtherTeachers.map(t => (
-                        <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>
+                        <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>
                       ))}
                     </select>
                   </div>
@@ -951,7 +978,7 @@ export default function App() {
       }
     };
 
-    const selectedTeacherObj = teachers.find(t => t.id === filterTeacherId);
+    const selectedTeacherObj = enhancedTeachers.find(t => t.id === filterTeacherId);
     const selectedPrintClassObj = classes.find(c => c.id === filterPrintClassId);
     const pendingCount = filterTeacherId ? requests.filter(r => r.requesterId === filterTeacherId && r.status === 'pending').length : 0;
 
@@ -962,7 +989,7 @@ export default function App() {
           {selectedPrintClassObj ? (
             <h2 className="text-lg font-bold mt-2">班級：{selectedPrintClassObj.name} 專屬調代課通知表</h2>
           ) : selectedTeacherObj ? (
-            <h2 className="text-lg font-bold mt-2">教師：{selectedTeacherObj.name} ({selectedTeacherObj.subject})</h2>
+            <h2 className="text-lg font-bold mt-2">教師：{selectedTeacherObj.name} ({selectedTeacherObj.displaySubject})</h2>
           ) : (
             <h2 className="text-lg font-bold mt-2">全校總表</h2>
           )}
@@ -1353,7 +1380,7 @@ export default function App() {
                         <option value="name">依姓名筆畫</option>
                       </select>
                       <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none">
-                        {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>)}
+                        {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
                       </select>
 
                       {userRole === 'admin' && (
@@ -1471,7 +1498,7 @@ export default function App() {
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                 <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2"><User className="w-4 h-4 text-blue-600"/> 教師身分登入</h4>
                 <select value={selectedLoginTeacher} onChange={e=>setSelectedLoginTeacher(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white font-medium focus:ring-blue-500">
-                  {teachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.subject})</option>)}
+                  {enhancedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
                 </select>
                 <div className="flex gap-2">
                   <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-blue-500" />
