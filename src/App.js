@@ -664,31 +664,41 @@ export default function App() {
     const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
     const lesson = lessons.find(l => l.id === req.lessonId);
     const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
-    const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節 (${className})` : '未知';
+    const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
+
+    const targetLesson = lessons.find(l => l.id === req.targetLessonId);
+    const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '未知班級';
+    const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
 
     const subject = `【嘉新國中】調代課通知 - ${requester}老師`;
     let body = `各位老師好：\n\n`;
-    body += `老師 ${requester} 提出了調代課申請，內容如下：\n`;
-    body += `- 假別/類型：${req.type === 'sub' ? `請假 (${req.reason})` : '調課'}\n`;
+    body += `老師 ${requester} 提出了調代課申請，詳細內容如下：\n`;
+    body += `- 申請類型：${req.type === 'sub' ? `請假代課 (${req.reason})` : '跨週調課'}\n\n`;
     
     if (req.type === 'sub') {
+      body += `【原授課/代課資訊】\n`;
       body += `- 發生日期：${req.targetDate || '未指定'}\n`;
-      body += `- 原授課班級：${className}\n`;
-      body += `- 原上課時間：${lessonTime} (${lesson?.subject})\n`;
-      body += `- 代課老師：${target}\n`;
+      body += `- 授課班級：${className}\n`;
+      body += `- 上課時間：${lessonTime}\n`;
+      body += `- 課程科目：${lesson?.subject || '未知'}\n`;
+      body += `- 授課老師：${requester}\n`;
+      body += `- 委託代課老師：${target}\n`;
     } else {
-      body += `- 我方調課日期：${req.targetDate || '未指定'}\n`;
-      body += `- 原授課班級：${className}\n`;
-      body += `- 原上課時間：${lessonTime} (${lesson?.subject})\n`;
-      body += `- 調換對象：${target}\n`;
-      body += `- 對方換課日期：${req.targetSwapDate || '未指定'}\n`;
-      const targetLesson = lessons.find(l => l.id === req.targetLessonId);
-      if (targetLesson) {
-          const tClassName = classes.find(c => c.id === targetLesson.classId)?.name || targetLesson.classId;
-          body += `- 對方換課時段：${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節 (${tClassName})\n`;
-      }
+      body += `【我方調課資訊】\n`;
+      body += `- 日期：${req.targetDate || '未指定'}\n`;
+      body += `- 班級：${className}\n`;
+      body += `- 時間：${lessonTime}\n`;
+      body += `- 科目：${lesson?.subject || '未知'}\n`;
+      body += `- 老師：${requester}\n\n`;
+
+      body += `【對方調課資訊】\n`;
+      body += `- 日期：${req.targetSwapDate || '未指定'}\n`;
+      body += `- 班級：${targetClassName}\n`;
+      body += `- 時間：${targetLessonTime}\n`;
+      body += `- 科目：${targetLesson?.subject || '未知'}\n`;
+      body += `- 老師：${target}\n`;
     }
-    body += `\n教務處已完成審核。特此通知相關人員。\n\n嘉新國中教務處 敬上`;
+    body += `\n教務處已完成審核。特此通知相關人員，感謝配合！\n\n嘉新國中教務處 敬上`;
     
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
@@ -705,19 +715,35 @@ export default function App() {
   const handleSendBulkEmail = (teacherName, teacherReqs) => {
     const subject = `【嘉新國中】調代課總表通知 - ${teacherName}老師`;
     let body = `敬愛的老師們 您好：\n\n`;
-    body += `以下為 ${teacherName} 老師近期已核准之調代課申請總表：\n\n`;
+    body += `以下為 ${teacherName} 老師近期已核准之調代課申請詳細總表：\n\n`;
+
     teacherReqs.forEach((r, idx) => {
-      body += `【申請 ${idx + 1}】\n`;
-      body += `- 類型：${r.type === 'sub' ? `請假 (${r.reason})` : '調課'}\n`;
+      const requester = teachers.find(t => t.id === r.requesterId)?.name || '未知';
+      const target = teachers.find(t => t.id === r.targetTeacherId)?.name || '未知';
+      const lesson = lessons.find(l => l.id === r.lessonId);
+      const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
+      const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
+
+      const targetLesson = lessons.find(l => l.id === r.targetLessonId);
+      const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '未知班級';
+      const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
+
+      body += `---------------------------------------------------\n`;
+      body += `【申請紀錄 ${idx + 1}】類型：${r.type === 'sub' ? `請假代課 (${r.reason})` : '跨週調課'}\n`;
+      
       if (r.type === 'sub') {
-          body += `- 發生日期：${r.targetDate || '未指定'}\n`;
+        body += `• 發生日期：${r.targetDate || '未指定'}\n`;
+        body += `• 原授課班級：${className} (${lesson?.subject || '未知'})\n`;
+        body += `• 上課時間：${lessonTime}\n`;
+        body += `• 原授課老師：${requester}\n`;
+        body += `• 代課老師：${target}\n`;
       } else {
-          body += `- 我方日期：${r.targetDate || '未指定'} \n`;
-          body += `- 對方換課日期：${r.targetSwapDate || '未指定'}\n`;
+        body += `• 【我方課程】日期：${r.targetDate || '未指定'} | 班級：${className} (${lesson?.subject || '未知'}) | 時間：${lessonTime} | 老師：${requester}\n`;
+        body += `• 【對方課程】日期：${r.targetSwapDate || '未指定'} | 班級：${targetClassName} (${targetLesson?.subject || '未知'}) | 時間：${targetLessonTime} | 老師：${target}\n`;
       }
-      body += `---------------------------\n`;
     });
-    body += `\n特此通知相關授課與代課老師，感謝配合！\n\n嘉新國中教務處 敬上`;
+    body += `---------------------------------------------------\n\n`;
+    body += `特此通知相關授課與代課老師，感謝您的配合與協助！\n\n嘉新國中教務處 敬上`;
     
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
@@ -871,7 +897,7 @@ export default function App() {
                   <div>
                     <label className="block text-xs font-semibold text-emerald-700 mb-1">選擇調課對象</label>
                     <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
-                      <option value="">-- 請選擇調課老師 --</option>
+                      <option value="">-- 請選擇調課對象 --</option>
                       {allOtherTeachers.map(t => (
                         <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>
                       ))}
@@ -1086,7 +1112,7 @@ export default function App() {
                   <button 
                     onClick={() => {
                       const tName = selectedTeacherObj?.name || '';
-                      const tReqs = requests.filter(r => r.requesterId === filterTeacherId && r.status === 'approved');
+                      const tReqs = requests.filter(r => (r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId) && r.status === 'approved');
                       if (tReqs.length === 0) {
                         showMessage('error', '該老師目前沒有「已核准」的申請可寄送總表');
                         return;
