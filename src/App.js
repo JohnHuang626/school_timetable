@@ -692,12 +692,9 @@ export default function App() {
     
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
-    // 嘗試用 window.open 打開，若被擋住則彈出提示或提供直接連結
     const newWindow = window.open(gmailUrl, '_blank');
     if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      // 彈出視窗被阻擋時的降級防禦：直接導向該網址或提示
-      showMessage('success', '💡 瀏覽器已阻擋彈出視窗，請點擊畫面下方產生的直連按鈕開啟 Gmail！');
-      // 同時在畫面上印出連結讓使用者點擊
+      showMessage('success', '💡 瀏覽器已阻擋彈出視窗，請點擊下方產生的直連按鈕開啟 Gmail！');
       const fallbackContainer = document.getElementById('gmail-fallback-container');
       if (fallbackContainer) {
         fallbackContainer.innerHTML = `<a href="${gmailUrl}" target="_blank" class="text-blue-600 underline font-bold bg-blue-50 p-2 rounded block mt-2 text-center">👉 點擊此處手動開啟 Gmail 寄送視窗 (${requester}老師)</a>`;
@@ -941,7 +938,8 @@ export default function App() {
     if (filterPrintClassId) {
       displayRequests = displayRequests.filter(r => {
         const lesson = lessons.find(l => l.id === r.lessonId);
-        return lesson && lesson.classId === filterPrintClassId;
+        const targetLesson = lessons.find(l => l.id === r.targetLessonId);
+        return (lesson && lesson.classId === filterPrintClassId) || (targetLesson && targetLesson.classId === filterPrintClassId);
       });
     }
 
@@ -1005,7 +1003,6 @@ export default function App() {
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        {/* 用於顯示被瀏覽器阻擋彈出視窗時的安全連結容器 */}
         <div id="gmail-fallback-container" className="px-4"></div>
 
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
@@ -1120,7 +1117,7 @@ export default function App() {
                   <th className="p-3 font-semibold">發生日期</th>
                   <th className="p-3 font-semibold">申請人</th>
                   <th className="p-3 font-semibold">類型 / 事由</th>
-                  <th className="p-3 font-semibold">原定課堂</th>
+                  <th className="p-3 font-semibold">調代課堂資訊</th>
                   <th className="p-3 font-semibold">對象老師</th>
                   <th className="p-3 font-semibold text-center">狀態</th>
                   <th className="p-3 font-semibold text-center print:hidden">操作</th>
@@ -1130,10 +1127,16 @@ export default function App() {
                 {displayRequests.map(req => {
                   const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
                   const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
+                  
                   const lesson = lessons.find(l => l.id === req.lessonId);
                   const classObj = classes.find(c => c.id === lesson?.classId);
                   const className = classObj?.name || '未知班級';
                   const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
+
+                  const targetLesson = lessons.find(l => l.id === req.targetLessonId);
+                  const targetClassObj = classes.find(c => c.id === targetLesson?.classId);
+                  const targetClassName = targetClassObj?.name || '未知班級';
+                  const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
                   
                   return (
                     <tr key={req.id} className="border-b hover:bg-slate-50 print:border-black">
@@ -1157,21 +1160,41 @@ export default function App() {
                           {req.type === 'sub' ? `請假 (${req.reason})` : '調課'}
                         </span>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 space-y-1">
                         {lesson ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <span className="font-semibold text-blue-900">我方：</span>
                             <span>{lessonTime}</span>
                             <button 
                               onClick={() => lesson.classId && setFilterPrintClassId(lesson.classId)}
-                              className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 font-bold transition-colors flex items-center gap-1"
+                              className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 font-bold transition-colors flex items-center gap-0.5"
                               title="點擊篩選此班級"
                             >
                               {className} <Search className="w-2.5 h-2.5"/>
                             </button>
-                            <span className="text-slate-500 text-xs">({lesson.subject})</span>
+                            <span className="text-slate-500">({lesson.subject})</span>
                           </div>
                         ) : (
-                          <span>未知</span>
+                          <div className="text-xs text-slate-400">原定課堂資訊遺失</div>
+                        )}
+
+                        {req.type === 'swap' && (
+                          targetLesson ? (
+                            <div className="flex items-center gap-1.5 text-xs pt-0.5 border-t border-slate-100">
+                              <span className="font-semibold text-emerald-900">對方：</span>
+                              <span>{targetLessonTime}</span>
+                              <button 
+                                onClick={() => targetLesson.classId && setFilterPrintClassId(targetLesson.classId)}
+                                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 font-bold transition-colors flex items-center gap-0.5"
+                                title="點擊篩選此班級"
+                              >
+                                {targetClassName} <Search className="w-2.5 h-2.5"/>
+                              </button>
+                              <span className="text-slate-500">({targetLesson.subject})</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-emerald-700 font-medium">對方換課時段：(未對應具體節次或跨校/自訂)</div>
+                          )
                         )}
                       </td>
                       <td className="p-3 font-bold text-blue-600">
