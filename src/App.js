@@ -939,10 +939,10 @@ export default function App() {
       }
     };
 
-    const handleBatchApprove = async (teacherId) => {
-      const pendingReqs = requests.filter(r => r.requesterId === teacherId && r.status === 'pending');
+    const handleBatchAction = async (newStatus) => {
+      const pendingReqs = displayRequests.filter(r => r.status === 'pending');
       if (pendingReqs.length === 0) {
-        showMessage('error', '該老師目前沒有待審核的申請');
+        showMessage('error', '目前沒有待審核的申請');
         return;
       }
       try {
@@ -951,7 +951,7 @@ export default function App() {
         let opCount = 0;
 
         pendingReqs.forEach(r => {
-          currentBatch.update(doc(db, 'requests', r.id), { status: 'approved' });
+          currentBatch.update(doc(db, 'requests', r.id), { status: newStatus });
           opCount++;
           if (opCount >= 450) {
             batches.push(currentBatch.commit());
@@ -963,9 +963,9 @@ export default function App() {
         if (opCount > 0) batches.push(currentBatch.commit());
         await Promise.all(batches);
 
-        showMessage('success', `✅ 已成功批次核准 ${teachers.find(t=>t.id===teacherId)?.name} 老師的所有申請！`);
+        showMessage('success', `✅ 已成功批次${newStatus === 'approved' ? '核准' : '退回'} ${pendingReqs.length} 筆申請！`);
       } catch(err) {
-        showMessage('error', '❌ 批次核准失敗：' + err.message);
+        showMessage('error', '❌ 批次操作失敗：' + err.message);
       }
     };
 
@@ -980,7 +980,7 @@ export default function App() {
 
     const selectedTeacherObj = enhancedTeachers.find(t => t.id === filterTeacherId);
     const selectedPrintClassObj = classes.find(c => c.id === filterPrintClassId);
-    const pendingCount = filterTeacherId ? requests.filter(r => r.requesterId === filterTeacherId && r.status === 'pending').length : 0;
+    const currentPendingCount = displayRequests.filter(r => r.status === 'pending').length;
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1024,30 +1024,42 @@ export default function App() {
                {teachers.map(t => <option key={t.id} value={t.id}>篩選：{t.name} 老師</option>)}
             </select>
 
-            {filterTeacherId && userRole === 'admin' && (
-              <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
-                <span className="text-xs font-bold text-emerald-800">{selectedTeacherObj?.name} (待審核: {pendingCount}張)</span>
+            {userRole === 'admin' && (
+              <div className="flex items-center gap-1.5 bg-slate-200/50 border border-slate-300 px-3 py-1.5 rounded-lg">
+                <span className="text-xs font-bold text-slate-700">
+                  {filterTeacherId ? `${selectedTeacherObj?.name} 待審` : '目前列表待審'}: {currentPendingCount}張
+                </span>
                 <button 
-                  onClick={() => handleBatchApprove(filterTeacherId)} 
-                  disabled={pendingCount === 0}
-                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs"
+                  onClick={() => handleBatchAction('approved')} 
+                  disabled={currentPendingCount === 0}
+                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5"/> 批次核准該師
+                  <CheckCircle2 className="w-3.5 h-3.5"/> 全部核准
                 </button>
                 <button 
-                  onClick={() => {
-                    const tName = selectedTeacherObj?.name || '';
-                    const tReqs = requests.filter(r => r.requesterId === filterTeacherId && r.status === 'approved');
-                    if (tReqs.length === 0) {
-                      showMessage('error', '該老師目前沒有「已核准」的申請可寄送總表');
-                      return;
-                    }
-                    handleSendBulkEmail(tName, tReqs);
-                  }} 
-                  className="px-2.5 py-1 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 flex items-center gap-1 shadow-xs"
+                  onClick={() => handleBatchAction('rejected')} 
+                  disabled={currentPendingCount === 0}
+                  className="px-2.5 py-1 bg-red-600 text-white rounded-md text-xs font-bold hover:bg-red-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
                 >
-                  <Mail className="w-3.5 h-3.5"/> 發送總表
+                  <X className="w-3.5 h-3.5"/> 全部退回
                 </button>
+                
+                {filterTeacherId && (
+                  <button 
+                    onClick={() => {
+                      const tName = selectedTeacherObj?.name || '';
+                      const tReqs = requests.filter(r => r.requesterId === filterTeacherId && r.status === 'approved');
+                      if (tReqs.length === 0) {
+                        showMessage('error', '該老師目前沒有「已核准」的申請可寄送總表');
+                        return;
+                      }
+                      handleSendBulkEmail(tName, tReqs);
+                    }} 
+                    className="px-2.5 py-1 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 flex items-center gap-1 shadow-xs transition-colors ml-1"
+                  >
+                    <Mail className="w-3.5 h-3.5"/> 發送總表
+                  </button>
+                )}
               </div>
             )}
 
@@ -1093,14 +1105,30 @@ export default function App() {
                           </div>
                         )}
                       </td>
-                      <td className="p-3 font-bold text-slate-800">{requester}</td>
+                      <td className="p-3 font-bold text-slate-800">
+                        {userRole === 'admin' ? (
+                          <button onClick={() => setFilterTeacherId(req.requesterId)} className="hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors group">
+                            {requester} <Search className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
+                          </button>
+                        ) : (
+                          requester
+                        )}
+                      </td>
                       <td className="p-3">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-800'}`}>
                           {req.type === 'sub' ? `請假 (${req.reason})` : '調課'}
                         </span>
                       </td>
                       <td className="p-3">{lessonTime} - {lesson?.subject}</td>
-                      <td className="p-3 font-bold text-blue-600">{target}</td>
+                      <td className="p-3 font-bold text-blue-600">
+                        {userRole === 'admin' && req.targetTeacherId ? (
+                          <button onClick={() => setFilterTeacherId(req.targetTeacherId)} className="hover:text-blue-800 hover:underline flex items-center gap-1 transition-colors group">
+                            {target} <Search className="w-3 h-3 text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
+                          </button>
+                        ) : (
+                          target
+                        )}
+                      </td>
                       <td className="p-3 text-center">
                         {req.status === 'pending' && <span className="text-orange-600 bg-orange-100 px-2.5 py-1 rounded-full text-xs font-bold">審核中</span>}
                         {req.status === 'approved' && <span className="text-green-600 bg-green-100 px-2.5 py-1 rounded-full text-xs font-bold">已核准</span>}
