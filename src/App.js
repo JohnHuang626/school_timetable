@@ -550,7 +550,7 @@ export default function App() {
 
       setShowDeleteAllTeachersModal(false);
       setSelectedTeacher('');
-      showMessage('success', '🗑️ 已刪除所有教師及相關排課紀錄');
+      showMessage('success', '🗑️ 已刪除所有教師及相關課表');
     } catch (e) {
       showMessage('error', '❌ 刪除失敗：' + e.message);
     }
@@ -573,7 +573,6 @@ export default function App() {
         }
       };
 
-      // 依據名稱分組 (去除前後空白)
       const teacherGroups = {};
       teachers.forEach(t => {
         const name = t.name.trim();
@@ -586,19 +585,16 @@ export default function App() {
       for (const name in teacherGroups) {
         const group = teacherGroups[name];
         if (group.length > 1) {
-          // 以 ID 排序，保留第一筆作為主帳號
           group.sort((a, b) => a.id.localeCompare(b.id));
           const keepTeacher = group[0];
           const dupTeachers = group.slice(1);
           const dupIds = dupTeachers.map(t => t.id);
 
-          // 轉移所有相關課表
           const affectedLessons = lessons.filter(l => dupIds.includes(l.teacherId));
           affectedLessons.forEach(l => {
             pushToBatch('update', doc(db, 'lessons', l.id), { teacherId: keepTeacher.id });
           });
 
-          // 轉移所有調代課申請紀錄 (發起人或對象)
           const affectedRequests = requests.filter(r => dupIds.includes(r.requesterId) || dupIds.includes(r.targetTeacherId));
           affectedRequests.forEach(r => {
             const updateData = {};
@@ -607,7 +603,6 @@ export default function App() {
             pushToBatch('update', doc(db, 'requests', r.id), updateData);
           });
 
-          // 刪除重複的教師帳號
           dupTeachers.forEach(t => {
             pushToBatch('delete', doc(db, 'teachers', t.id));
             mergedCount++;
@@ -637,19 +632,17 @@ export default function App() {
       let displaySubject = t.subject || '無';
       
       if (tLessons.length > 0) {
-        // 取得該名老師實際上課的所有不重複科目
         const uniqueSubjects = [...new Set(tLessons.map(l => l.subject))];
         if (uniqueSubjects.length > 1) {
           uniqueSubjects.sort((a, b) => {
             let indexA = SUBJECT_PRIORITY.findIndex(p => a.includes(p));
             let indexB = SUBJECT_PRIORITY.findIndex(p => b.includes(p));
-            // 如果不在優先名單內，賦予較大的 index 以往後排
             indexA = indexA === -1 ? 999 : indexA;
             indexB = indexB === -1 ? 999 : indexB;
             return indexA - indexB;
           });
         }
-        displaySubject = uniqueSubjects[0]; // 取排序後最高優先級的科目
+        displaySubject = uniqueSubjects[0];
       }
       
       return { ...t, displaySubject };
@@ -697,9 +690,19 @@ export default function App() {
     }
     body += `\n教務處已完成審核。特此通知相關人員。\n\n嘉新國中教務處 敬上`;
     
-    // 使用 Gmail 網頁版開啟，並自動帶入主旨與內文
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(gmailUrl, '_blank');
+    
+    // 嘗試用 window.open 打開，若被擋住則彈出提示或提供直接連結
+    const newWindow = window.open(gmailUrl, '_blank');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      // 彈出視窗被阻擋時的降級防禦：直接導向該網址或提示
+      showMessage('success', '💡 瀏覽器已阻擋彈出視窗，請點擊畫面下方產生的直連按鈕開啟 Gmail！');
+      // 同時在畫面上印出連結讓使用者點擊
+      const fallbackContainer = document.getElementById('gmail-fallback-container');
+      if (fallbackContainer) {
+        fallbackContainer.innerHTML = `<a href="${gmailUrl}" target="_blank" class="text-blue-600 underline font-bold bg-blue-50 p-2 rounded block mt-2 text-center">👉 點擊此處手動開啟 Gmail 寄送視窗 (${requester}老師)</a>`;
+      }
+    }
   };
 
   const handleSendBulkEmail = (teacherName, teacherReqs) => {
@@ -719,9 +722,16 @@ export default function App() {
     });
     body += `\n特此通知相關授課與代課老師，感謝配合！\n\n嘉新國中教務處 敬上`;
     
-    // 使用 Gmail 網頁版開啟，並自動帶入主旨與內文
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(gmailUrl, '_blank');
+    
+    const newWindow = window.open(gmailUrl, '_blank');
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      showMessage('success', '💡 瀏覽器已阻擋彈出視窗，請點擊下方產生的直連按鈕開啟總表信件！');
+      const fallbackContainer = document.getElementById('gmail-fallback-container');
+      if (fallbackContainer) {
+        fallbackContainer.innerHTML = `<a href="${gmailUrl}" target="_blank" class="text-blue-600 underline font-bold bg-blue-50 p-2 rounded block mt-2 text-center">👉 點擊此處手動開啟 Gmail 總表信件 (${teacherName}老師)</a>`;
+      }
+    }
   };
 
   const RequestModal = ({ data, editReq, onClose }) => {
@@ -988,7 +998,6 @@ export default function App() {
     const selectedPrintClassObj = classes.find(c => c.id === filterPrintClassId);
     const currentPendingCount = displayRequests.filter(r => r.status === 'pending').length;
 
-    // 清除所有篩選，回到全校總表
     const resetFilters = () => {
       setFilterTeacherId('');
       setFilterPrintClassId('');
@@ -996,6 +1005,9 @@ export default function App() {
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* 用於顯示被瀏覽器阻擋彈出視窗時的安全連結容器 */}
+        <div id="gmail-fallback-container" className="px-4"></div>
+
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
           <h1 className="text-2xl font-bold">嘉義縣立嘉新國民中學 調代課審核總表</h1>
           {selectedPrintClassObj ? (
@@ -1363,7 +1375,12 @@ export default function App() {
             </button>
             {(userRole === 'admin' || userRole === 'teacher') && (
               <button 
-                onClick={() => {setActiveTab('requests'); setIsEditing(false);}}
+                onClick={() => {
+                  setActiveTab('requests'); 
+                  setIsEditing(false);
+                  setFilterTeacherId('');
+                  setFilterPrintClassId('');
+                }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
                 📋 {userRole === 'admin' ? '審核中心' : '我的申請'}
@@ -1519,7 +1536,6 @@ export default function App() {
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
-      {/* 修改密碼 Modal */}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1556,7 +1572,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 登入 Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1598,7 +1613,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 以下是各類刪除、新增與匯入的確認視窗...保留原樣 */}
       {showAddClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -1734,7 +1748,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 匯入 Modal */}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
