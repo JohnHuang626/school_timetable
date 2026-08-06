@@ -90,6 +90,7 @@ export default function App() {
   const [showDeleteTeacherModal, setShowDeleteTeacherModal] = useState(false);
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [showDeleteAllTeachersModal, setShowDeleteAllTeachersModal] = useState(false);
+  const [showDeduplicateModal, setShowDeduplicateModal] = useState(false);
 
   useEffect(() => {
     const handleFirebaseError = (err) => {
@@ -309,10 +310,10 @@ export default function App() {
         }
 
         if (subject) {
-          let teacher = currentTeachers.find(t => t.name === teacherName);
+          let teacher = currentTeachers.find(t => t.name.trim() === teacherName.trim());
           if (!teacher) {
             const newId = `T${Math.floor(Math.random()*100000)}`;
-            teacher = { id: newId, name: teacherName, subject: subject || '未知', password: '1234' };
+            teacher = { id: newId, name: teacherName.trim(), subject: subject || '未知', password: '1234' };
             currentTeachers.push(teacher);
             pushToBatch('set', doc(db, 'teachers', teacher.id), teacher);
           }
@@ -552,6 +553,79 @@ export default function App() {
       showMessage('success', '🗑️ 已刪除所有教師及相關排課紀錄');
     } catch (e) {
       showMessage('error', '❌ 刪除失敗：' + e.message);
+    }
+  };
+
+  const executeDeduplicateTeachers = async () => {
+    try {
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      const pushToBatch = (op, ref, data) => {
+        if (op === 'delete') currentBatch.delete(ref);
+        else if (op === 'update') currentBatch.update(ref, data);
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      };
+
+      // 依據名稱分組 (去除前後空白)
+      const teacherGroups = {};
+      teachers.forEach(t => {
+        const name = t.name.trim();
+        if (!teacherGroups[name]) teacherGroups[name] = [];
+        teacherGroups[name].push(t);
+      });
+
+      let mergedCount = 0;
+
+      for (const name in teacherGroups) {
+        const group = teacherGroups[name];
+        if (group.length > 1) {
+          // 以 ID 排序，保留第一筆作為主帳號
+          group.sort((a, b) => a.id.localeCompare(b.id));
+          const keepTeacher = group[0];
+          const dupTeachers = group.slice(1);
+          const dupIds = dupTeachers.map(t => t.id);
+
+          // 轉移所有相關課表
+          const affectedLessons = lessons.filter(l => dupIds.includes(l.teacherId));
+          affectedLessons.forEach(l => {
+            pushToBatch('update', doc(db, 'lessons', l.id), { teacherId: keepTeacher.id });
+          });
+
+          // 轉移所有調代課申請紀錄 (發起人或對象)
+          const affectedRequests = requests.filter(r => dupIds.includes(r.requesterId) || dupIds.includes(r.targetTeacherId));
+          affectedRequests.forEach(r => {
+            const updateData = {};
+            if (dupIds.includes(r.requesterId)) updateData.requesterId = keepTeacher.id;
+            if (dupIds.includes(r.targetTeacherId)) updateData.targetTeacherId = keepTeacher.id;
+            pushToBatch('update', doc(db, 'requests', r.id), updateData);
+          });
+
+          // 刪除重複的教師帳號
+          dupTeachers.forEach(t => {
+            pushToBatch('delete', doc(db, 'teachers', t.id));
+            mergedCount++;
+          });
+        }
+      }
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
+      setShowDeduplicateModal(false);
+      if (mergedCount > 0) {
+        showMessage('success', `✅ 已成功合併 ${mergedCount} 筆重複教師紀錄，並自動更新所有課表！`);
+      } else {
+        showMessage('success', `✅ 檢查完畢，目前沒有重複的教師名字。`);
+      }
+    } catch (e) {
+      showMessage('error', '❌ 合併失敗：' + e.message);
     }
   };
 
@@ -1289,18 +1363,23 @@ export default function App() {
                           </button>
                           {teachers.length > 0 && (
                             <button onClick={() => { setTeacherToDelete(selectedTeacher); setShowDeleteTeacherModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center gap-1">
-                              <Trash2 className="w-4 h-4"/> 刪除
+                            <Trash2 className="w-4 h-4"/> 刪除
+                          </button>
+                        )}
+                        {teachers.length > 0 && (
+                          <>
+                            <button onClick={() => setShowDeduplicateModal(true)} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
+                              <Eraser className="w-4 h-4"/> 合併重複
                             </button>
-                          )}
-                          {teachers.length > 0 && (
                             <button onClick={() => setShowDeleteAllTeachersModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
                               <AlertTriangle className="w-4 h-4"/> 刪除所有教師
                             </button>
-                          )}
-                        </div>
-                      )}
+                          </>
+                        )}
+                      </div>
+                    )}
 
-                      {userRole === 'teacher' && selectedTeacher === loggedTeacherId && (
+                    {userRole === 'teacher' && selectedTeacher === loggedTeacherId && (
                         <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200">我的專屬課表</span>
                       )}
                       {userRole === 'teacher' && selectedTeacher !== loggedTeacherId && (
@@ -1545,6 +1624,19 @@ export default function App() {
         </div>
       )}
 
+      {showDeduplicateModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-green-500">
+            <h3 className="text-lg font-bold text-green-700 mb-2">合併重複教師？</h3>
+            <p className="text-gray-600 text-sm mb-6">系統將掃描同名的教師紀錄並自動合併為一筆，同時更新所有對應的課表與調代課紀錄。</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeduplicateModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
+              <button onClick={executeDeduplicateTeachers} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700">確認合併</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 匯入 Modal */}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
@@ -1574,14 +1666,16 @@ export default function App() {
                   let newTeachersMap = new Map();
                   let parsedLessons = [];
 
-                  classes.forEach(c => newClassesMap.set(c.name, c));
-                  teachers.forEach(t => newTeachersMap.set(t.name, t));
+                  classes.forEach(c => newClassesMap.set(c.name.trim(), c));
+                  teachers.forEach(t => newTeachersMap.set(t.name.trim(), t));
                   
                   for (let i = 1; i < lines.length; i++) {
                     const row = lines[i].split(',').map(item => item.trim());
                     if (row.length < 5) continue;
                     
-                    const [cName, tName, subject, dStr, pStr] = row;
+                    const [cNameRaw, tNameRaw, subject, dStr, pStr] = row;
+                    const cName = cNameRaw.trim();
+                    const tName = tNameRaw.trim();
                     if (!cName || !tName || !dStr || !pStr) continue;
 
                     let cId = cName.replace(/\D/g, ''); 
