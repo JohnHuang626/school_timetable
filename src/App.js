@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft } from 'lucide-react';
+import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
@@ -662,6 +662,7 @@ export default function App() {
   const handleSendEmail = (req) => {
     const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
     const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
+    
     const lesson = lessons.find(l => l.id === req.lessonId);
     const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
     const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
@@ -701,15 +702,7 @@ export default function App() {
     body += `\n教務處已完成審核。特此通知相關人員，感謝配合！\n\n嘉新國中教務處 敬上`;
     
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    const newWindow = window.open(gmailUrl, '_blank');
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      showMessage('success', '💡 瀏覽器已阻擋彈出視窗，請點擊下方產生的直連按鈕開啟 Gmail！');
-      const fallbackContainer = document.getElementById('gmail-fallback-container');
-      if (fallbackContainer) {
-        fallbackContainer.innerHTML = `<a href="${gmailUrl}" target="_blank" class="text-blue-600 underline font-bold bg-blue-50 p-2 rounded block mt-2 text-center">👉 點擊此處手動開啟 Gmail 寄送視窗 (${requester}老師)</a>`;
-      }
-    }
+    window.open(gmailUrl, '_blank');
   };
 
   const handleSendBulkEmail = (teacherName, teacherReqs) => {
@@ -720,6 +713,7 @@ export default function App() {
     teacherReqs.forEach((r, idx) => {
       const requester = teachers.find(t => t.id === r.requesterId)?.name || '未知';
       const target = teachers.find(t => t.id === r.targetTeacherId)?.name || '未知';
+      
       const lesson = lessons.find(l => l.id === r.lessonId);
       const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
       const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
@@ -738,23 +732,23 @@ export default function App() {
         body += `• 原授課老師：${requester}\n`;
         body += `• 代課老師：${target}\n`;
       } else {
-        body += `• 【我方課程】日期：${r.targetDate || '未指定'} | 班級：${className} (${lesson?.subject || '未知'}) | 時間：${lessonTime} | 老師：${requester}\n`;
-        body += `• 【對方課程】日期：${r.targetSwapDate || '未指定'} | 班級：${targetClassName} (${targetLesson?.subject || '未知'}) | 時間：${targetLessonTime} | 老師：${target}\n`;
+        body += `• 【我方課程】\n`;
+        body += `  - 日期：${r.targetDate || '未指定'}\n`;
+        body += `  - 班級：${className} (${lesson?.subject || '未知'})\n`;
+        body += `  - 時間：${lessonTime}\n`;
+        body += `  - 老師：${requester}\n`;
+        body += `• 【對方課程】\n`;
+        body += `  - 日期：${r.targetSwapDate || '未指定'}\n`;
+        body += `  - 班級：${targetClassName} (${targetLesson?.subject || '未知'})\n`;
+        body += `  - 時間：${targetLessonTime}\n`;
+        body += `  - 老師：${target}\n`;
       }
     });
     body += `---------------------------------------------------\n\n`;
     body += `特此通知相關授課與代課老師，感謝您的配合與協助！\n\n嘉新國中教務處 敬上`;
     
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    const newWindow = window.open(gmailUrl, '_blank');
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      showMessage('success', '💡 瀏覽器已阻擋彈出視窗，請點擊下方產生的直連按鈕開啟總表信件！');
-      const fallbackContainer = document.getElementById('gmail-fallback-container');
-      if (fallbackContainer) {
-        fallbackContainer.innerHTML = `<a href="${gmailUrl}" target="_blank" class="text-blue-600 underline font-bold bg-blue-50 p-2 rounded block mt-2 text-center">👉 點擊此處手動開啟 Gmail 總表信件 (${teacherName}老師)</a>`;
-      }
-    }
+    window.open(gmailUrl, '_blank');
   };
 
   const RequestModal = ({ data, editReq, onClose }) => {
@@ -957,6 +951,9 @@ export default function App() {
       ? requests 
       : requests.filter(r => r.requesterId === loggedTeacherId || r.targetTeacherId === loggedTeacherId);
 
+    const isArchiveView = activeTab === 'archive';
+    displayRequests = displayRequests.filter(r => isArchiveView ? r.isArchived : !r.isArchived);
+
     if (filterTeacherId) {
       displayRequests = displayRequests.filter(r => r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId);
     }
@@ -1018,6 +1015,36 @@ export default function App() {
       }
     };
 
+    const handleArchiveAll = async () => {
+      const toArchive = requests.filter(r => r.status !== 'pending' && !r.isArchived);
+      if (toArchive.length === 0) {
+        showMessage('error', '目前沒有可歸檔的已處理紀錄');
+        return;
+      }
+      try {
+        const batches = [];
+        let currentBatch = writeBatch(db);
+        let opCount = 0;
+
+        toArchive.forEach(r => {
+          currentBatch.update(doc(db, 'requests', r.id), { isArchived: true });
+          opCount++;
+          if (opCount >= 450) {
+            batches.push(currentBatch.commit());
+            currentBatch = writeBatch(db);
+            opCount = 0;
+          }
+        });
+
+        if (opCount > 0) batches.push(currentBatch.commit());
+        await Promise.all(batches);
+
+        showMessage('success', `✅ 已成功將 ${toArchive.length} 筆已處理紀錄歸檔！`);
+      } catch(err) {
+        showMessage('error', '❌ 歸檔失敗：' + err.message);
+      }
+    };
+
     const selectedTeacherObj = enhancedTeachers.find(t => t.id === filterTeacherId);
     const selectedPrintClassObj = classes.find(c => c.id === filterPrintClassId);
     const currentPendingCount = displayRequests.filter(r => r.status === 'pending').length;
@@ -1029,8 +1056,6 @@ export default function App() {
 
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div id="gmail-fallback-container" className="px-4"></div>
-
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
           <h1 className="text-2xl font-bold">嘉義縣立嘉新國民中學 調代課審核總表</h1>
           {selectedPrintClassObj ? (
@@ -1038,7 +1063,7 @@ export default function App() {
           ) : selectedTeacherObj ? (
             <h2 className="text-lg font-bold mt-2">教師：{selectedTeacherObj.name} ({selectedTeacherObj.displaySubject})</h2>
           ) : (
-            <h2 className="text-lg font-bold mt-2">全校總表</h2>
+            <h2 className="text-lg font-bold mt-2">{isArchiveView ? '歷史歸檔總表' : '全校總表'}</h2>
           )}
           <p className="text-xs text-gray-600 mt-1">列印時間：{new Date().toLocaleString()}</p>
         </div>
@@ -1046,15 +1071,15 @@ export default function App() {
         <div className="p-4 border-b bg-slate-50 flex justify-between items-center print:hidden flex-wrap gap-3">
           <div>
             <h2 
-              onClick={resetFilters} 
+              onClick={() => { resetFilters(); setActiveTab(isArchiveView ? 'archive' : 'requests'); }} 
               className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
               title="點擊返回全校總表"
             >
               <FileText className="w-5 h-5 text-blue-600"/> 
               <span className="group-hover:underline">
                 {filterTeacherId || filterPrintClassId 
-                  ? `篩選檢視中 (點擊此處返回全校總表)` 
-                  : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄')}
+                  ? `篩選檢視中 (點擊此處返回)` 
+                  : (isArchiveView ? '歷史歸檔紀錄' : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄'))}
               </span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">點擊列表中的老師姓名或班級可進行快速篩選，隨時點擊上方標題可返回全校總表</p>
@@ -1112,9 +1137,9 @@ export default function App() {
                   <button 
                     onClick={() => {
                       const tName = selectedTeacherObj?.name || '';
-                      const tReqs = requests.filter(r => (r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId) && r.status === 'approved');
+                      const tReqs = requests.filter(r => (r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId) && r.status === 'approved' && !r.isArchived);
                       if (tReqs.length === 0) {
-                        showMessage('error', '該老師目前沒有「已核准」的申請可寄送總表');
+                        showMessage('error', '該老師目前沒有「已核准」且未歸檔的申請可寄送總表');
                         return;
                       }
                       handleSendBulkEmail(tName, tReqs);
@@ -1122,6 +1147,16 @@ export default function App() {
                     className="px-2.5 py-1 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 flex items-center gap-1 shadow-xs transition-colors ml-1"
                   >
                     <Mail className="w-3.5 h-3.5"/> 發送總表
+                  </button>
+                )}
+                
+                {!isArchiveView && (
+                  <button 
+                    onClick={handleArchiveAll} 
+                    className="px-2.5 py-1 bg-amber-600 text-white rounded-md text-xs font-bold hover:bg-amber-700 flex items-center gap-1 shadow-xs transition-colors ml-1"
+                    title="將所有已核准/已退回的紀錄移至歷史歸檔"
+                  >
+                    <Archive className="w-3.5 h-3.5"/> 全部歸檔
                   </button>
                 )}
               </div>
@@ -1410,19 +1445,20 @@ export default function App() {
           </div>
 
           <nav className="flex items-center space-x-2 my-2 sm:my-0">
-            <button 
-              onClick={() => {setActiveTab('schedule'); setViewMode('class'); setIsEditing(false);}}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'class' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
-            >
-              🏫 班級課表
-            </button>
-            <button 
-              onClick={() => {setActiveTab('schedule'); setViewMode('teacher'); setIsEditing(false);}}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'teacher' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
-            >
-              📅 教師課表
-            </button>
-            {(userRole === 'admin' || userRole === 'teacher') && (
+          <button 
+            onClick={() => {setActiveTab('schedule'); setViewMode('class'); setIsEditing(false);}}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'class' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+          >
+            🏫 班級課表
+          </button>
+          <button 
+            onClick={() => {setActiveTab('schedule'); setViewMode('teacher'); setIsEditing(false);}}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'teacher' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+          >
+            📅 教師課表
+          </button>
+          {(userRole === 'admin' || userRole === 'teacher') && (
+            <>
               <button 
                 onClick={() => {
                   setActiveTab('requests'); 
@@ -1433,16 +1469,28 @@ export default function App() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
                 📋 {userRole === 'admin' ? '審核中心' : '我的申請'}
-                {userRole === 'admin' && requests.filter(r => r.status === 'pending').length > 0 && (
+                {userRole === 'admin' && requests.filter(r => r.status === 'pending' && !r.isArchived).length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full animate-pulse">
-                    {requests.filter(r => r.status === 'pending').length}
+                    {requests.filter(r => r.status === 'pending' && !r.isArchived).length}
                   </span>
                 )}
               </button>
-            )}
-          </nav>
+              <button 
+                onClick={() => {
+                  setActiveTab('archive'); 
+                  setIsEditing(false);
+                  setFilterTeacherId('');
+                  setFilterPrintClassId('');
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+              >
+                🗂️ 歷史歸檔
+              </button>
+            </>
+          )}
+        </nav>
 
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3">
             {userRole === 'teacher' && (
               <button onClick={() => { setPwdMessage({ type: '', text: '' }); setShowPwdModal(true); }} className="p-2 text-amber-300 hover:text-white transition" title="修改密碼">
                 <Key className="w-5 h-5"/>
@@ -1467,22 +1515,22 @@ export default function App() {
           )}
 
           {userRole === 'admin' && classes.length === 0 && (
-            <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm print:hidden flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-amber-800">雲端資料庫目前為空</h3>
-                <p className="text-amber-700 text-sm">請點擊右方按鈕載入初始預設資料。</p>
-              </div>
-              <button onClick={initializeDatabase} className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow">
-                🔄 載入初始預設資料
-              </button>
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm print:hidden flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-amber-800">雲端資料庫目前為空</h3>
+              <p className="text-amber-700 text-sm">請點擊右方按鈕載入初始預設資料。</p>
             </div>
-          )}
-          
-          {activeTab === 'requests' ? (
-            renderRequestsView()
-          ) : (
-            <>
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4 print:hidden">
+            <button onClick={initializeDatabase} className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow">
+              🔄 載入初始預設資料
+            </button>
+          </div>
+        )}
+        
+        {(activeTab === 'requests' || activeTab === 'archive') ? (
+          renderRequestsView()
+        ) : (
+          <>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4 print:hidden">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="font-bold text-slate-700">選擇檢視{viewMode === 'class' ? '班級' : '教師'}：</span>
                   {viewMode === 'class' ? (
