@@ -659,7 +659,7 @@ export default function App() {
     return list;
   }, [enhancedTeachers, teacherSortMode]);
 
-  const handleSendEmail = (req) => {
+  const getSingleEmailUrl = (req) => {
     const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
     const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
     
@@ -701,11 +701,10 @@ export default function App() {
     }
     body += `\n教務處已完成審核。特此通知相關人員，感謝配合！\n\n嘉新國中教務處 敬上`;
     
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(gmailUrl, '_blank');
+    return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const handleSendBulkEmail = (teacherName, teacherReqs) => {
+  const getBulkEmailUrl = (teacherName, teacherReqs) => {
     const subject = `【嘉新國中】調代課總表通知 - ${teacherName}老師`;
     let body = `敬愛的老師們 您好：\n\n`;
     body += `以下為 ${teacherName} 老師近期已核准之調代課申請詳細總表：\n\n`;
@@ -747,8 +746,7 @@ export default function App() {
     body += `---------------------------------------------------\n\n`;
     body += `特此通知相關授課與代課老師，感謝您的配合與協助！\n\n嘉新國中教務處 敬上`;
     
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(gmailUrl, '_blank');
+    return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const RequestModal = ({ data, editReq, onClose }) => {
@@ -1140,20 +1138,32 @@ export default function App() {
                 </button>
                 
                 {filterTeacherId && (
-                  <button 
-                    onClick={() => {
-                      const tName = selectedTeacherObj?.name || '';
-                      const tReqs = requests.filter(r => (r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId) && r.status === 'approved' && !r.isArchived);
-                      if (tReqs.length === 0) {
-                        showMessage('error', '該老師目前沒有「已核准」且未歸檔的申請可寄送總表');
-                        return;
-                      }
-                      handleSendBulkEmail(tName, tReqs);
-                    }} 
-                    className="px-2.5 py-1 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 flex items-center gap-1 shadow-xs transition-colors ml-1"
-                  >
-                    <Mail className="w-3.5 h-3.5"/> 發送總表
-                  </button>
+                  (() => {
+                    const tName = selectedTeacherObj?.name || '';
+                    const tReqs = requests.filter(r => (r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId) && r.status === 'approved' && !r.isArchived);
+                    
+                    if (tReqs.length === 0) {
+                      return (
+                        <button 
+                          onClick={() => showMessage('error', '該老師目前沒有「已核准」且未歸檔的申請可寄送總表')} 
+                          className="px-2.5 py-1 bg-blue-400 text-white rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1 shadow-xs transition-colors ml-1"
+                        >
+                          <Mail className="w-3.5 h-3.5"/> 發送總表
+                        </button>
+                      );
+                    }
+                    
+                    return (
+                      <a 
+                        href={getBulkEmailUrl(tName, tReqs)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 flex items-center gap-1 shadow-xs transition-colors ml-1"
+                      >
+                        <Mail className="w-3.5 h-3.5"/> 發送總表
+                      </a>
+                    );
+                  })()
                 )}
                 
                 {!isArchiveView && (
@@ -1287,9 +1297,14 @@ export default function App() {
                             </>
                           )}
                           {req.status === 'approved' && (
-                            <button onClick={()=>handleSendEmail(req)} className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-xs font-bold border border-blue-200 flex items-center gap-1 shadow-xs">
+                            <a 
+                              href={getSingleEmailUrl(req)} 
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-xs font-bold border border-blue-200 flex items-center gap-1 shadow-xs"
+                            >
                               <Mail className="w-3.5 h-3.5"/> 寄信
-                            </button>
+                            </a>
                           )}
                           {(userRole === 'admin' || req.requesterId === loggedTeacherId) && (
                             <button onClick={() => handleDeleteRequest(req.id)} className="px-2.5 py-1 bg-gray-100 text-gray-600 hover:bg-red-500 hover:text-white rounded-md text-xs font-bold transition">
