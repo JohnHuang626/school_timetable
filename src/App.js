@@ -704,12 +704,13 @@ export default function App() {
     return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const getBulkEmailUrl = (teacherName, teacherReqs) => {
-    const subject = `【嘉新國中】調代課總表通知 - ${teacherName}老師`;
-    let body = `敬愛的老師們 您好：\n\n`;
-    body += `以下為 ${teacherName} 老師近期已核准之調代課申請詳細總表：\n\n`;
+  const getBulkEmailUrl = (entityName, reqs, isClass = false) => {
+    const subject = `【嘉新國中】調代課總表通知 - ${entityName}${isClass ? '' : '老師'}`;
+    let body = isClass 
+      ? `敬愛的導師及任課老師 您好：\n\n以下為 ${entityName} 近期已核准之調代課申請詳細總表：\n\n`
+      : `敬愛的老師們 您好：\n\n以下為 ${entityName} 老師近期已核准之調代課申請詳細總表：\n\n`;
 
-    teacherReqs.forEach((r, idx) => {
+    reqs.forEach((r, idx) => {
       const requester = teachers.find(t => t.id === r.requesterId)?.name || '未知';
       const target = teachers.find(t => t.id === r.targetTeacherId)?.name || '未知';
       
@@ -1137,15 +1138,18 @@ export default function App() {
                   <X className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次退回' : '全部退回'}
                 </button>
                 
-                {filterTeacherId && (
+                {(filterTeacherId || filterPrintClassId) && (
                   (() => {
-                    const tName = selectedTeacherObj?.name || '';
-                    const tReqs = requests.filter(r => (r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId) && r.status === 'approved' && !r.isArchived);
+                    const isClass = !!filterPrintClassId;
+                    const entityName = isClass ? (selectedPrintClassObj?.name || '') : (selectedTeacherObj?.name || '');
                     
-                    if (tReqs.length === 0) {
+                    // 直接抓取目前畫面上顯示，並且是「已核准」狀態的單子（無視是否歸檔，所見即所得）
+                    const reqsToEmail = displayRequests.filter(r => r.status === 'approved');
+                    
+                    if (reqsToEmail.length === 0) {
                       return (
                         <button 
-                          onClick={() => showMessage('error', '該老師目前沒有「已核准」且未歸檔的申請可寄送總表')} 
+                          onClick={() => showMessage('error', `該${isClass ? '班級' : '老師'}目前列表中沒有「已核准」的申請可寄送總表`)} 
                           className="px-2.5 py-1 bg-blue-400 text-white rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1 shadow-xs transition-colors ml-1"
                         >
                           <Mail className="w-3.5 h-3.5"/> 發送總表
@@ -1155,7 +1159,7 @@ export default function App() {
                     
                     return (
                       <a 
-                        href={getBulkEmailUrl(tName, tReqs)}
+                        href={getBulkEmailUrl(entityName, reqsToEmail, isClass)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-2.5 py-1 bg-blue-600 text-white rounded-md text-xs font-bold hover:bg-blue-700 flex items-center gap-1 shadow-xs transition-colors ml-1"
