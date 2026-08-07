@@ -682,22 +682,22 @@ export default function App() {
       body += `- 授課班級：${className}\n`;
       body += `- 上課時間：${lessonTime}\n`;
       body += `- 課程科目：${lesson?.subject || '未知'}\n`;
-      body += `- 授課老師：${requester}\n`;
+      body += `- 原授課老師：${requester}\n`;
       body += `- 委託代課老師：${target}\n`;
     } else {
-      body += `【我方調課資訊】\n`;
+      body += `【我方課程資訊】\n`;
       body += `- 日期：${req.targetDate || '未指定'}\n`;
       body += `- 班級：${className}\n`;
       body += `- 時間：${lessonTime}\n`;
       body += `- 科目：${lesson?.subject || '未知'}\n`;
-      body += `- 老師：${requester}\n\n`;
+      body += `- 原授課老師：${requester}\n\n`;
 
-      body += `【對方調課資訊】\n`;
+      body += `【對方換課資訊】\n`;
       body += `- 日期：${req.targetSwapDate || '未指定'}\n`;
       body += `- 班級：${targetClassName}\n`;
       body += `- 時間：${targetLessonTime}\n`;
       body += `- 科目：${targetLesson?.subject || '未知'}\n`;
-      body += `- 老師：${target}\n`;
+      body += `- 對象老師：${target}\n`;
     }
     body += `\n教務處已完成審核。特此通知相關人員，感謝配合！\n\n嘉新國中教務處 敬上`;
     
@@ -723,7 +723,7 @@ export default function App() {
       const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
 
       body += `---------------------------------------------------\n`;
-      body += `【申請紀錄 ${idx + 1}】類型：${r.type === 'sub' ? `請假代課 (${r.reason})` : '跨週調課'}\n`;
+      body += `【申請紀錄 ${idx + 1}】類型：${r.type === 'sub' ? `請假代課 (${r.reason})` : '調課'}\n`;
       
       if (r.type === 'sub') {
         body += `• 發生日期：${r.targetDate || '未指定'}\n`;
@@ -756,6 +756,9 @@ export default function App() {
     const day = data ? data.day : lesson.day;
     const period = data ? data.period : lesson.period;
 
+    // Resolve who is actually making the request (Admin acting on behalf of someone vs Teacher themselves)
+    const actualRequesterId = editReq ? editReq.requesterId : (data?.requesterId || loggedTeacherId);
+
     const [requestType, setRequestType] = useState(editReq ? editReq.type : 'sub'); 
     const [targetTeacher, setTargetTeacher] = useState(editReq ? editReq.targetTeacherId : '');
     const [targetLessonId, setTargetLessonId] = useState(editReq ? (editReq.targetLessonId || '') : ''); 
@@ -764,8 +767,8 @@ export default function App() {
     const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : new Date().toISOString().split('T')[0]); 
     const targetClass = classes.find(c => c.id === lesson.classId) || { name: lesson.classId };
 
-    const requesterTeacherObj = enhancedTeachers.find(t => t.id === loggedTeacherId);
-    const allOtherTeachers = enhancedTeachers.filter(t => t.id !== loggedTeacherId);
+    const requesterTeacherObj = enhancedTeachers.find(t => t.id === actualRequesterId);
+    const allOtherTeachers = enhancedTeachers.filter(t => t.id !== actualRequesterId);
 
     const prioritizedTeachers = useMemo(() => {
       if (requestType !== 'sub') return allOtherTeachers;
@@ -813,7 +816,7 @@ export default function App() {
           const newReq = {
             id: reqId,
             type: requestType,
-            requesterId: loggedTeacherId,
+            requesterId: actualRequesterId,
             targetTeacherId: targetTeacher,
             lessonId: lesson.id,
             targetLessonId: requestType === 'swap' ? targetLessonId : null,
@@ -837,7 +840,10 @@ export default function App() {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
           <div className="bg-blue-700 p-4 flex justify-between items-center text-white">
-            <h3 className="text-lg font-bold flex items-center gap-2"><ArrowRightLeft className="w-5 h-5"/> 發起調代課申請</h3>
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5"/> 
+              {userRole === 'admin' && !editReq ? `代理發起調代課 (${requesterTeacherObj?.name || '未知'})` : '發起調代課申請'}
+            </h3>
             <button onClick={onClose} className="hover:bg-blue-800 p-1 rounded-full"><X className="w-5 h-5"/></button>
           </div>
           
@@ -882,12 +888,12 @@ export default function App() {
             ) : (
               <div className="space-y-4">
                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
-                  <label className="block text-sm font-bold text-blue-800">1. 我的調課日 (我這堂課發生在哪天)</label>
+                  <label className="block text-sm font-bold text-blue-800">1. 我的調課日 (這堂課發生在哪天)</label>
                   <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white shadow-sm"/>
                 </div>
 
                 <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-3">
-                  <label className="block text-sm font-bold text-emerald-800">2. 對方的換課資訊 (我要跟誰、哪天換)</label>
+                  <label className="block text-sm font-bold text-emerald-800">2. 對方的換課資訊 (要跟誰、哪天換)</label>
                   <div>
                     <label className="block text-xs font-semibold text-emerald-700 mb-1">選擇調課對象</label>
                     <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
@@ -1073,7 +1079,7 @@ export default function App() {
             <h2 
               onClick={() => { resetFilters(); setActiveTab(isArchiveView ? 'archive' : 'requests'); }} 
               className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
-              title="點擊返回全校總表"
+              title="點擊清除篩選，返回全校總表"
             >
               <FileText className="w-5 h-5 text-blue-600"/> 
               <span className="group-hover:underline">
@@ -1213,7 +1219,7 @@ export default function App() {
                       </td>
                       <td className="p-3 font-bold text-slate-800">
                         <button onClick={() => setFilterTeacherId(req.requesterId)} className="hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors group">
-                          {requester} <Search className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
+                          {requester} <Search className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" title="點選篩選此教師" />
                         </button>
                       </td>
                       <td className="p-3">
@@ -1229,7 +1235,7 @@ export default function App() {
                             <button 
                               onClick={() => lesson.classId && setFilterPrintClassId(lesson.classId)}
                               className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 font-bold transition-colors flex items-center gap-0.5"
-                              title="點擊篩選此班級"
+                              title="點選篩選此班級"
                             >
                               {className} <Search className="w-2.5 h-2.5"/>
                             </button>
@@ -1247,7 +1253,7 @@ export default function App() {
                               <button 
                                 onClick={() => targetLesson.classId && setFilterPrintClassId(targetLesson.classId)}
                                 className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 font-bold transition-colors flex items-center gap-0.5"
-                                title="點擊篩選此班級"
+                                title="點選篩選此班級"
                               >
                                 {targetClassName} <Search className="w-2.5 h-2.5"/>
                               </button>
@@ -1261,7 +1267,7 @@ export default function App() {
                       <td className="p-3 font-bold text-blue-600">
                         {req.targetTeacherId ? (
                           <button onClick={() => setFilterTeacherId(req.targetTeacherId)} className="hover:text-blue-800 hover:underline flex items-center gap-1 transition-colors group">
-                            {target} <Search className="w-3 h-3 text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity" title="篩選此教師" />
+                            {target} <Search className="w-3 h-3 text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity" title="點選篩選此教師" />
                           </button>
                         ) : (
                           target
@@ -1363,21 +1369,25 @@ export default function App() {
                     const teacherName = lesson ? (teachers.find(t => t.id === lesson.teacherId)?.name || '未知') : '';
                     const className = lesson ? (classes.find(c => c.id === lesson.classId)?.name || lesson.classId) : '';
                     
+                    // Logic to determine if a block can be clicked to initiate a request
                     const isMyOwnSchedule = userRole === 'teacher' && viewMode === 'teacher' && selectedTeacher === loggedTeacherId;
+                    const isAdmin = userRole === 'admin';
+                    const canInitiateRequest = isMyOwnSchedule || isAdmin;
 
                     return (
                       <td key={dayIdx} className="border-b border-l border-gray-100 p-2 relative h-20 group">
                         {lesson ? (
                           <div 
                             onClick={(e) => { 
-                              if(isMyOwnSchedule) {
-                                setRequestTargetLesson({lesson, day: dayNum, period: period.id}); 
+                              if(canInitiateRequest && !isEditing) {
+                                // Important: explicitly pass the target lesson's teacher as the requester
+                                setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
                               }
                             }}
                             className={`h-full flex flex-col items-center justify-center rounded-xl p-2 
                               ${period.isTutor ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'} 
                               shadow-xs relative transition-all group-hover:shadow-md
-                              ${isMyOwnSchedule ? 'cursor-pointer hover:bg-indigo-100 hover:border-indigo-300 ring-2 ring-transparent hover:ring-indigo-200' : ''}
+                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-indigo-100 hover:border-indigo-300 ring-2 ring-transparent hover:ring-indigo-200' : ''}
                             `}
                           >
                             {viewMode === 'class' ? (
@@ -1399,13 +1409,15 @@ export default function App() {
                                   {className}
                                 </button>
                                 <div className="text-xs text-blue-700 relative z-10">{lesson.subject}</div>
-                                
-                                {isMyOwnSchedule && (
-                                  <div className="absolute inset-0 bg-indigo-600/90 text-white rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0">
-                                    ✨ 點擊空白處申請調代
-                                  </div>
-                                )}
                               </>
+                            )}
+                            
+                            {/* Overlay message for initiating request */}
+                            {(canInitiateRequest && !isEditing) && (
+                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/90' : 'bg-indigo-600/90'} text-white rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0`}>
+                                <span className="text-sm mb-0.5">✨</span>
+                                <span className="text-center leading-tight px-1">{isAdmin ? '管理員代為申請' : '點擊空白處申請調代'}</span>
+                              </div>
                             )}
                           </div>
                         ) : (
@@ -1630,6 +1642,7 @@ export default function App() {
         </div>
       </main>
 
+      {}
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
