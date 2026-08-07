@@ -69,6 +69,7 @@ export default function App() {
   const [editRequestData, setEditRequestData] = useState(null);
   const [filterTeacherId, setFilterTeacherId] = useState(''); 
   const [filterPrintClassId, setFilterPrintClassId] = useState('');
+  const [filterDate, setFilterDate] = useState('');
 
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   
@@ -952,12 +953,19 @@ export default function App() {
   };
 
   const renderRequestsView = () => {
-    let displayRequests = userRole === 'admin' 
-      ? requests 
-      : requests.filter(r => r.requesterId === loggedTeacherId || r.targetTeacherId === loggedTeacherId);
-
     const isArchiveView = activeTab === 'archive';
-    displayRequests = displayRequests.filter(r => isArchiveView ? r.isArchived : !r.isArchived);
+    const isPublicView = activeTab === 'public_requests';
+
+    let displayRequests = [];
+    if (isPublicView) {
+      // 全校動態：顯示所有已核准的單子
+      displayRequests = requests.filter(r => r.status === 'approved');
+    } else {
+      displayRequests = userRole === 'admin' 
+        ? requests 
+        : requests.filter(r => r.requesterId === loggedTeacherId || r.targetTeacherId === loggedTeacherId);
+      displayRequests = displayRequests.filter(r => isArchiveView ? r.isArchived : !r.isArchived);
+    }
 
     if (filterTeacherId) {
       displayRequests = displayRequests.filter(r => r.requesterId === filterTeacherId || r.targetTeacherId === filterTeacherId);
@@ -969,6 +977,10 @@ export default function App() {
         const targetLesson = lessons.find(l => l.id === r.targetLessonId);
         return (lesson && lesson.classId === filterPrintClassId) || (targetLesson && targetLesson.classId === filterPrintClassId);
       });
+    }
+
+    if (filterDate) {
+      displayRequests = displayRequests.filter(r => r.targetDate === filterDate || r.targetSwapDate === filterDate);
     }
 
     const handleAction = async (id, newStatus) => {
@@ -1057,6 +1069,7 @@ export default function App() {
     const resetFilters = () => {
       setFilterTeacherId('');
       setFilterPrintClassId('');
+      setFilterDate('');
     };
 
     return (
@@ -1068,7 +1081,7 @@ export default function App() {
           ) : selectedTeacherObj ? (
             <h2 className="text-lg font-bold mt-2">教師：{selectedTeacherObj.name} ({selectedTeacherObj.displaySubject})</h2>
           ) : (
-            <h2 className="text-lg font-bold mt-2">{isArchiveView ? '歷史歸檔總表' : '全校總表'}</h2>
+            <h2 className="text-lg font-bold mt-2">{isPublicView ? '全校調代課動態總表' : (isArchiveView ? '歷史歸檔總表' : '全校總表')}</h2>
           )}
           <p className="text-xs text-gray-600 mt-1">列印時間：{new Date().toLocaleString()}</p>
         </div>
@@ -1076,21 +1089,28 @@ export default function App() {
         <div className="p-4 border-b bg-slate-50 flex justify-between items-center print:hidden flex-wrap gap-3">
           <div>
             <h2 
-              onClick={() => { resetFilters(); setActiveTab(isArchiveView ? 'archive' : 'requests'); }} 
+              onClick={() => { resetFilters(); setActiveTab(isPublicView ? 'public_requests' : (isArchiveView ? 'archive' : 'requests')); }} 
               className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
               title="點擊清除篩選，返回全校總表"
             >
               <FileText className="w-5 h-5 text-blue-600"/> 
               <span className="group-hover:underline">
-                {filterTeacherId || filterPrintClassId 
+                {filterTeacherId || filterPrintClassId || filterDate
                   ? `篩選檢視中 (點擊此處返回)` 
-                  : (isArchiveView ? '歷史歸檔紀錄' : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄'))}
+                  : (isPublicView ? '🌍 全校最新調代課動態' : (isArchiveView ? '歷史歸檔紀錄' : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄')))}
               </span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">點擊列表中的老師姓名或班級可進行快速篩選，隨時點擊上方標題可返回全校總表</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <input 
+               type="date"
+               value={filterDate}
+               onChange={(e) => setFilterDate(e.target.value)}
+               className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs"
+               title="選擇日期篩選"
+            />
             <select 
                value={filterPrintClassId} 
                onChange={(e) => setFilterPrintClassId(e.target.value)} 
@@ -1109,7 +1129,7 @@ export default function App() {
                {teachers.map(t => <option key={t.id} value={t.id}>篩選：{t.name} 老師</option>)}
             </select>
 
-            {(filterTeacherId || filterPrintClassId) && (
+            {(filterTeacherId || filterPrintClassId || filterDate) && (
               <button 
                 onClick={resetFilters} 
                 className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-300 transition-colors"
@@ -1118,10 +1138,10 @@ export default function App() {
               </button>
             )}
 
-            {userRole === 'admin' && (
+            {userRole === 'admin' && !isPublicView && (
               <div className="flex items-center gap-1.5 bg-slate-200/50 border border-slate-300 px-3 py-1.5 rounded-lg">
                 <span className="text-xs font-bold text-slate-700">
-                  {filterTeacherId || filterPrintClassId ? '目前列表待審' : '全校待審'}: {currentPendingCount}張
+                  {filterTeacherId || filterPrintClassId || filterDate ? '目前列表待審' : '全校待審'}: {currentPendingCount}張
                 </span>
                 <button 
                   onClick={() => handleBatchAction('approved')} 
@@ -1492,10 +1512,23 @@ export default function App() {
             <>
               <button 
                 onClick={() => {
+                  setActiveTab('public_requests'); 
+                  setIsEditing(false);
+                  setFilterTeacherId('');
+                  setFilterPrintClassId('');
+                  setFilterDate('');
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+              >
+                🌍 全校動態
+              </button>
+              <button 
+                onClick={() => {
                   setActiveTab('requests'); 
                   setIsEditing(false);
                   setFilterTeacherId('');
                   setFilterPrintClassId('');
+                  setFilterDate('');
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
@@ -1512,6 +1545,7 @@ export default function App() {
                   setIsEditing(false);
                   setFilterTeacherId('');
                   setFilterPrintClassId('');
+                  setFilterDate('');
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
@@ -1557,7 +1591,7 @@ export default function App() {
           </div>
         )}
         
-        {(activeTab === 'requests' || activeTab === 'archive') ? (
+        {(activeTab === 'requests' || activeTab === 'archive' || activeTab === 'public_requests') ? (
           renderRequestsView()
         ) : (
           <>
