@@ -791,8 +791,12 @@ export default function App() {
               ) : (
                 <>
                   <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none">
-                    <span>本月全校代課總節數統計</span>
-                    <span className="text-2xl">{totalFees} <span className="text-sm font-medium">節</span></span>
+                    <span>本月全校代課總計與鐘點費結算</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl">{totalFees} <span className="text-sm font-medium">節</span></span>
+                      <span className="text-indigo-300 print:text-slate-400">|</span>
+                      <span className="text-2xl text-red-600 print:text-black font-extrabold">{(totalFees * 455).toLocaleString()} <span className="text-sm font-bold text-indigo-900 print:text-black">元</span></span>
+                    </div>
                   </div>
                   
                   <div className="grid gap-6">
@@ -803,11 +807,12 @@ export default function App() {
                             <User className="w-4 h-4 text-slate-500 print:hidden"/>
                             代課教師：<span className="text-indigo-700 print:text-black text-lg">{data.teacher?.name || '未知'}</span>
                           </span>
-                          
-                          <div className="flex items-center gap-4 sm:gap-6">
-                            <span className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm">
-                              本月共代 <span className="text-lg mx-1">{data.count}</span> 節
-                            </span>
+                          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                            <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm flex items-center gap-2">
+                              <span>本月共代 <span className="text-lg mx-1">{data.count}</span> 節</span>
+                              <span className="w-px h-4 bg-indigo-400 print:bg-slate-300"></span>
+                              <span>共計 <span className="text-lg mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
+                            </div>
                             
                             {/* 新增的簽名欄位 */}
                             <div className="flex items-end gap-1 pt-1">
