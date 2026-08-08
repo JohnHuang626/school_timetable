@@ -798,14 +798,23 @@ export default function App() {
                   <div className="grid gap-6">
                     {reportData.map((data, idx) => (
                       <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black print:mb-6 shadow-sm">
-                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex justify-between items-center border-b border-slate-200 print:bg-slate-200">
+                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-slate-200">
                           <span className="text-base flex items-center gap-2">
-                            <User className="w-4 h-4 text-slate-500"/>
-                            代課教師：<span className="text-indigo-700 print:text-black">{data.teacher?.name || '未知'}</span>
+                            <User className="w-4 h-4 text-slate-500 print:hidden"/>
+                            代課教師：<span className="text-indigo-700 print:text-black text-lg">{data.teacher?.name || '未知'}</span>
                           </span>
-                          <span className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm">
-                            本月共代 <span className="text-lg mx-1">{data.count}</span> 節
-                          </span>
+                          
+                          <div className="flex items-center gap-4 sm:gap-6">
+                            <span className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm">
+                              本月共代 <span className="text-lg mx-1">{data.count}</span> 節
+                            </span>
+                            
+                            {/* 新增的簽名欄位 */}
+                            <div className="flex items-end gap-1 pt-1">
+                              <span className="text-slate-500 print:text-black font-bold text-sm print:text-base mb-0.5">簽名：</span>
+                              <div className="w-32 sm:w-40 border-b-2 border-slate-300 print:border-black h-4"></div>
+                            </div>
+                          </div>
                         </div>
                         <div className="p-0 overflow-x-auto">
                           <table className="w-full text-sm text-left border-collapse">
