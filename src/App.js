@@ -93,6 +93,12 @@ export default function App() {
   const [showDeleteAllTeachersModal, setShowDeleteAllTeachersModal] = useState(false);
   const [showDeduplicateModal, setShowDeduplicateModal] = useState(false);
 
+  const [showFeeReportModal, setShowFeeReportModal] = useState(false);
+  const [feeReportMonth, setFeeReportMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
   useEffect(() => {
     const handleFirebaseError = (err) => {
       console.error("Firebase Database Error:", err);
@@ -705,50 +711,136 @@ export default function App() {
     return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const getBulkEmailUrl = (entityName, reqs, isClass = false) => {
-    const subject = `【嘉新國中】調代課總表通知 - ${entityName}${isClass ? '' : '老師'}`;
-    let body = isClass 
-      ? `敬愛的導師及任課老師 您好：\n\n以下為 ${entityName} 近期已核准之調代課申請詳細總表：\n\n`
-      : `敬愛的老師們 您好：\n\n以下為 ${entityName} 老師近期已核准之調代課申請詳細總表：\n\n`;
-
-    reqs.forEach((r, idx) => {
-      const requester = teachers.find(t => t.id === r.requesterId)?.name || '未知';
-      const target = teachers.find(t => t.id === r.targetTeacherId)?.name || '未知';
+  const FeeReportModal = () => {
+    const reportData = useMemo(() => {
+      // 過濾出指定月份、已核准，且類型為「代課」的單子
+      const filtered = requests.filter(r => 
+        r.status === 'approved' && 
+        r.type === 'sub' && 
+        r.targetDate && r.targetDate.startsWith(feeReportMonth)
+      );
       
-      const lesson = lessons.find(l => l.id === r.lessonId);
-      const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
-      const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
-
-      const targetLesson = lessons.find(l => l.id === r.targetLessonId);
-      const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '未知班級';
-      const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
-
-      body += `---------------------------------------------------\n`;
-      body += `【申請紀錄 ${idx + 1}】類型：${r.type === 'sub' ? `請假代課 (${r.reason})` : '調課'}\n`;
+      const stats = {};
+      filtered.forEach(req => {
+        const subTeacherId = req.targetTeacherId;
+        if (!subTeacherId) return;
+        
+        if (!stats[subTeacherId]) {
+          stats[subTeacherId] = {
+            teacher: teachers.find(t => t.id === subTeacherId),
+            count: 0,
+            details: []
+          };
+        }
+        
+        const originalTeacher = teachers.find(t => t.id === req.requesterId)?.name || '未知';
+        const lesson = lessons.find(l => l.id === req.lessonId);
+        const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
+        const periodStr = lesson ? `${DAYS[lesson.day-1]} 第${lesson.period}節` : '未知';
+        
+        stats[subTeacherId].count += 1;
+        stats[subTeacherId].details.push({
+          date: req.targetDate,
+          originalTeacher,
+          className,
+          periodStr,
+          reason: req.reason
+        });
+      });
       
-      if (r.type === 'sub') {
-        body += `• 發生日期：${r.targetDate || '未指定'}\n`;
-        body += `• 原授課班級：${className} (${lesson?.subject || '未知'})\n`;
-        body += `• 上課時間：${lessonTime}\n`;
-        body += `• 原授課老師：${requester}\n`;
-        body += `• 代課老師：${target}\n`;
-      } else {
-        body += `• 【我方課程】\n`;
-        body += `  - 日期：${r.targetDate || '未指定'}\n`;
-        body += `  - 班級：${className} (${lesson?.subject || '未知'})\n`;
-        body += `  - 時間：${lessonTime}\n`;
-        body += `  - 老師：${requester}\n`;
-        body += `• 【對方課程】\n`;
-        body += `  - 日期：${r.targetSwapDate || '未指定'}\n`;
-        body += `  - 班級：${targetClassName} (${targetLesson?.subject || '未知'})\n`;
-        body += `  - 時間：${targetLessonTime}\n`;
-        body += `  - 老師：${target}\n`;
-      }
-    });
-    body += `---------------------------------------------------\n\n`;
-    body += `特此通知相關授課與代課老師，感謝您的配合與協助！\n\n嘉新國中教務處 敬上`;
-    
-    return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      // 轉換成陣列並按照代課總節數由高到低排序
+      return Object.values(stats).sort((a, b) => b.count - a.count);
+    }, [feeReportMonth, requests, teachers, classes, lessons]);
+
+    const totalFees = reportData.reduce((sum, item) => sum + item.count, 0);
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-indigo-700 p-4 flex justify-between items-center text-white print:hidden">
+            <h3 className="text-lg font-bold flex items-center gap-2"><Calendar className="w-5 h-5" /> 每月代課節數統計與費用結算表</h3>
+            <button onClick={() => setShowFeeReportModal(false)} className="hover:bg-indigo-800 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
+          </div>
+          
+          <div className="p-6 flex-1 overflow-y-auto bg-slate-50">
+            <div className="flex flex-wrap justify-between items-end mb-6 print:hidden gap-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1">請選擇結算月份</label>
+                <input 
+                  type="month" 
+                  value={feeReportMonth} 
+                  onChange={e => setFeeReportMonth(e.target.value)} 
+                  className="border border-slate-300 rounded-lg p-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white cursor-pointer"
+                />
+              </div>
+              <button onClick={() => window.print()} className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-2 shadow-sm transition-colors">
+                <Printer className="w-4 h-4"/> 列印此報表
+              </button>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0">
+              <div className="text-center mb-6 hidden print:block border-b-2 border-black pb-4">
+                <h2 className="text-2xl font-bold">嘉新國中 {feeReportMonth.split('-')[0]}年{feeReportMonth.split('-')[1]}月 代課節數統計表</h2>
+                <p className="text-sm mt-2">列印日期：{new Date().toLocaleDateString()}</p>
+              </div>
+              
+              {reportData.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 font-bold bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                  該月份目前沒有任何已核准的請假代課紀錄。
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none">
+                    <span>本月全校代課總節數統計</span>
+                    <span className="text-2xl">{totalFees} <span className="text-sm font-medium">節</span></span>
+                  </div>
+                  
+                  <div className="grid gap-6">
+                    {reportData.map((data, idx) => (
+                      <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black print:mb-6 shadow-sm">
+                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex justify-between items-center border-b border-slate-200 print:bg-slate-200">
+                          <span className="text-base flex items-center gap-2">
+                            <User className="w-4 h-4 text-slate-500"/>
+                            代課教師：<span className="text-indigo-700 print:text-black">{data.teacher?.name || '未知'}</span>
+                          </span>
+                          <span className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm">
+                            本月共代 <span className="text-lg mx-1">{data.count}</span> 節
+                          </span>
+                        </div>
+                        <div className="p-0 overflow-x-auto">
+                          <table className="w-full text-sm text-left border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50 text-slate-600 border-b print:bg-white">
+                                <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap">代課日期</th>
+                                <th className="p-3 font-semibold w-24 whitespace-nowrap">請假老師</th>
+                                <th className="p-3 font-semibold w-20 whitespace-nowrap">假別</th>
+                                <th className="p-3 font-semibold w-28 whitespace-nowrap">授課班級</th>
+                                <th className="p-3 font-semibold whitespace-nowrap">代課節次</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {data.details.sort((a,b) => a.date.localeCompare(b.date)).map((det, i) => (
+                                <tr key={i} className="border-b last:border-0 hover:bg-slate-50 print:border-b print:border-slate-300">
+                                  <td className="p-3 pl-5 text-indigo-700 font-bold whitespace-nowrap">{det.date}</td>
+                                  <td className="p-3 text-slate-700 font-medium">{det.originalTeacher}</td>
+                                  <td className="p-3"><span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-300 shadow-xs">{det.reason}</span></td>
+                                  <td className="p-3 font-bold text-slate-800">{det.className}</td>
+                                  <td className="p-3 text-slate-600 font-medium">{det.periodStr}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const RequestModal = ({ data, editReq, onClose }) => {
@@ -1197,6 +1289,16 @@ export default function App() {
                     title="將所有已核准/已退回的紀錄移至歷史歸檔"
                   >
                     <Archive className="w-3.5 h-3.5"/> 全部歸檔
+                  </button>
+                )}
+                
+                {isArchiveView && (
+                  <button 
+                    onClick={() => setShowFeeReportModal(true)} 
+                    className="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 flex items-center gap-1 shadow-xs transition-colors ml-1 print:hidden"
+                    title="按月份統計各老師代課節數，方便結算代課費"
+                  >
+                    <Calendar className="w-3.5 h-3.5"/> 鐘點費結算表
                   </button>
                 )}
               </div>
@@ -2033,6 +2135,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showFeeReportModal && userRole === 'admin' && <FeeReportModal />}
     </div>
   );
 }
