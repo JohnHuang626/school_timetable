@@ -1723,6 +1723,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0">
+      {/* 專屬列印樣式：強制隱藏瀏覽器預設的頁首(日期)與頁尾(網址)，並保留安全的紙張邊距 */}
+      <style type="text/css" media="print">
+        {`
+          @page { size: auto; margin: 0mm; }
+          body { padding: 10mm; }
+        `}
+      </style>
+      
       <header className="bg-blue-700 text-white shadow-md sticky top-0 z-30 print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
           <div className="flex items-center space-x-3">
