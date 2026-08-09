@@ -803,14 +803,14 @@ export default function App() {
     const totalFees = reportData.reduce((sum, item) => sum + item.count, 0);
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm print:static print:block print:p-0 print:bg-white print:backdrop-blur-none">
-        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none print:max-h-none print:h-auto print:overflow-visible print:block">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm print:static print:block print:p-0 print:bg-white print:backdrop-blur-none print:h-auto print:min-h-0">
+        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none print:max-h-none print:h-auto print:overflow-visible print:block print:m-0">
           <div className="bg-indigo-700 p-4 flex justify-between items-center text-white print:hidden">
             <h3 className="text-lg font-bold flex items-center gap-2"><Calendar className="w-5 h-5" /> 每月代課節數統計與費用結算表</h3>
             <button onClick={() => setShowFeeReportModal(false)} className="hover:bg-indigo-800 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
           </div>
           
-          <div className="p-6 flex-1 overflow-y-auto bg-slate-50 print:p-0 print:overflow-visible print:bg-white print:block">
+          <div className="p-6 flex-1 overflow-y-auto bg-slate-50 print:p-0 print:overflow-visible print:bg-white print:block print:flex-none">
             <div className="flex flex-wrap justify-between items-end mb-6 print:hidden gap-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">請選擇結算月份</label>
@@ -1722,12 +1722,27 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0">
-      {/* 專屬列印樣式：強制隱藏瀏覽器預設的頁首(日期)與頁尾(網址)，並保留安全的紙張邊距 */}
-      <style type="text/css" media="print">
+    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto">
+      {/* 專屬列印樣式：強制隱藏瀏覽器預設的頁首(日期)與頁尾(網址)，並解除所有高度限制防止空白頁 */}
+      <style>
         {`
-          @page { size: auto; margin: 0mm; }
-          body { padding: 10mm; }
+          @media print {
+            @page { 
+              margin: 0; 
+              size: auto;
+            }
+            html, body { 
+              margin: 0 !important; 
+              padding: 10mm !important; 
+              height: auto !important; 
+              min-height: 0 !important;
+              overflow: visible !important;
+            }
+            .min-h-screen {
+              min-height: 0 !important;
+              height: auto !important;
+            }
+          }
         `}
       </style>
       
