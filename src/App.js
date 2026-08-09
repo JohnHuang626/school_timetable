@@ -48,8 +48,8 @@ export default function App() {
   const [lessons, setLessons] = useState([]);
   const [requests, setRequests] = useState([]);
   
-  const [selectedClass, setSelectedClass] = useState('701');
-  const [selectedTeacher, setSelectedTeacher] = useState('溫盛傑');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState('');
   const [teacherSortMode, setTeacherSortMode] = useState('default');
   
   const [userRole, setUserRole] = useState('guest'); 
@@ -668,6 +668,18 @@ export default function App() {
     }
     return list;
   }, [enhancedTeachers, teacherSortMode]);
+
+  useEffect(() => {
+    if (classes.length > 0 && !classes.some(c => c.id === selectedClass)) {
+      setSelectedClass(classes[0].id);
+    }
+  }, [classes, selectedClass]);
+
+  useEffect(() => {
+    if (sortedTeachers.length > 0 && !sortedTeachers.some(t => t.id === selectedTeacher)) {
+      setSelectedTeacher(sortedTeachers[0].id);
+    }
+  }, [sortedTeachers, selectedTeacher]);
 
   const getSingleEmailUrl = (req) => {
     const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
