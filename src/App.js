@@ -755,14 +755,14 @@ export default function App() {
     const totalFees = reportData.reduce((sum, item) => sum + item.count, 0);
 
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm print:static print:block print:p-0 print:bg-white print:backdrop-blur-none">
+        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none print:max-h-none print:h-auto print:overflow-visible print:block">
           <div className="bg-indigo-700 p-4 flex justify-between items-center text-white print:hidden">
             <h3 className="text-lg font-bold flex items-center gap-2"><Calendar className="w-5 h-5" /> 每月代課節數統計與費用結算表</h3>
             <button onClick={() => setShowFeeReportModal(false)} className="hover:bg-indigo-800 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
           </div>
           
-          <div className="p-6 flex-1 overflow-y-auto bg-slate-50">
+          <div className="p-6 flex-1 overflow-y-auto bg-slate-50 print:p-0 print:overflow-visible print:bg-white print:block">
             <div className="flex flex-wrap justify-between items-end mb-6 print:hidden gap-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">請選擇結算月份</label>
@@ -821,7 +821,7 @@ export default function App() {
                             </div>
                           </div>
                         </div>
-                        <div className="p-0 overflow-x-auto">
+                        <div className="p-0 overflow-x-auto print:overflow-visible">
                           <table className="w-full text-sm text-left border-collapse">
                             <thead>
                               <tr className="bg-slate-50 text-slate-600 border-b print:bg-white">
@@ -1600,7 +1600,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10">
+    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0">
       <header className="bg-blue-700 text-white shadow-md sticky top-0 z-30 print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
           <div className="flex items-center space-x-3">
@@ -1687,7 +1687,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 print:p-0">
+      <main className={`max-w-7xl mx-auto px-4 py-6 print:p-0 ${showFeeReportModal ? 'print:hidden' : ''}`}>
         <div className="space-y-6">
           {importStatus.message && (
             <div className={`print:hidden border px-4 py-3 rounded-xl flex items-center gap-2 font-bold shadow-sm ${importStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
