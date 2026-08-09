@@ -43,6 +43,28 @@ export default function App() {
   const [viewMode, setViewMode] = useState('class'); 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   
+  useEffect(() => {
+    // 1. 設定瀏覽器分頁標題
+    document.title = "嘉新課表與調代課系統";
+
+    // 2. 動態產生並注入 Favicon (學校圖示)
+    const setFavicon = () => {
+      const emoji = '🏫'; // 您也可以改成 '📅' 或 '📖'
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
+      const iconUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+      
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = iconUrl;
+    };
+    
+    setFavicon();
+  }, []);
+
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [lessons, setLessons] = useState([]);
