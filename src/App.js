@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive } from 'lucide-react';
+import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
@@ -95,6 +95,7 @@ export default function App() {
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [showDeleteAllTeachersModal, setShowDeleteAllTeachersModal] = useState(false);
   const [showDeduplicateModal, setShowDeduplicateModal] = useState(false);
+  const [showPrintHintModal, setShowPrintHintModal] = useState(false);
 
   const [showFeeReportModal, setShowFeeReportModal] = useState(false);
   const [feeReportMonth, setFeeReportMonth] = useState(() => {
@@ -148,6 +149,17 @@ export default function App() {
   const showMessage = (type, message) => {
     setImportStatus({ type, message });
     setTimeout(() => setImportStatus({ type: '', message: '' }), 6000);
+  };
+
+  const handlePrint = () => {
+    setShowPrintHintModal(true);
+  };
+
+  const executePrint = () => {
+    setShowPrintHintModal(false);
+    setTimeout(() => {
+      window.print();
+    }, 300);
   };
 
   const initializeDatabase = async () => {
@@ -676,7 +688,7 @@ export default function App() {
   }, [classes, selectedClass]);
 
   useEffect(() => {
-    if (sortedTeachers.length > 0 && !sortedTeachers.some(t => t.id === selectedTeacher)) {
+    if (sortedTeachers.length > 0 && !selectedTeacher && sortedTeachers.some(t => t.id !== undefined)) {
       setSelectedTeacher(sortedTeachers[0].id);
     }
   }, [sortedTeachers, selectedTeacher]);
@@ -726,9 +738,9 @@ export default function App() {
     return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const getBulkEmailUrl = (entityName, reqsToEmail) => {
-    const subject = `【嘉新國中】調代課通知總表 - ${entityName}`;
-    let body = `各位老師好：\n\n以下為 ${entityName} 近期的調代課異動總表，請查照：\n\n`;
+  const getBulkEmailUrl = (entityName, reqsToEmail, isClass) => {
+    const subject = `【嘉新國中】調代課通知總表 - ${entityName}${isClass ? '導師' : '老師'} 收`;
+    let body = `老師好：\n\n以下為近期與您或貴班相關的調代課異動總表，請查照：\n\n`;
     
     reqsToEmail.forEach((req, idx) => {
       const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
@@ -821,7 +833,7 @@ export default function App() {
                   className="border border-slate-300 rounded-lg p-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white cursor-pointer"
                 />
               </div>
-              <button onClick={() => window.print()} className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-2 shadow-sm transition-colors">
+              <button onClick={handlePrint} className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-2 shadow-sm transition-colors">
                 <Printer className="w-4 h-4"/> 列印此報表
               </button>
             </div>
@@ -838,7 +850,7 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none print:mb-2 print:p-2">
+                  <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none print:mb-4 print:p-2">
                     <span>本月全校代課總計與鐘點費結算</span>
                     <div className="flex items-center gap-4">
                       <span className="text-2xl print:text-lg">{totalFees} <span className="text-sm font-medium">節</span></span>
@@ -847,7 +859,7 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div className="grid gap-6 print:gap-2">
+                  <div className="grid gap-6 print:gap-4">
                     {reportData.map((data, idx) => (
                       <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black shadow-sm print:rounded-none">
                         <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-slate-100 print:p-1.5">
@@ -1430,7 +1442,7 @@ export default function App() {
               </div>
             )}
 
-            <button onClick={() => window.print()} className="px-3.5 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-1.5 shadow-xs">
+            <button onClick={handlePrint} className="px-3.5 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-1.5 shadow-xs">
               <Printer className="w-4 h-4"/> 列印表格
             </button>
           </div>
@@ -1728,7 +1740,7 @@ export default function App() {
         {`
           @media print {
             @page { 
-              margin: 0; 
+              margin: 0 !important; 
               size: auto;
             }
             html, body { 
@@ -1737,6 +1749,8 @@ export default function App() {
               height: auto !important; 
               min-height: 0 !important;
               overflow: visible !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             .min-h-screen {
               min-height: 0 !important;
@@ -1963,6 +1977,46 @@ export default function App() {
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
+      {}
+      {showPrintHintModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm print:hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border-t-4 border-blue-600">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Printer className="w-6 h-6 text-blue-600"/> 準備列印
+              </h3>
+              <button onClick={() => setShowPrintHintModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X className="w-5 h-5"/>
+              </button>
+            </div>
+            
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+              <h4 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-1.5">
+                <Info className="w-4 h-4"/> 如何隱藏列印時的網址與日期？
+              </h4>
+              <p className="text-sm text-slate-700 mb-3 leading-relaxed">
+                系統已為您最佳化排版。若預覽畫面邊緣仍出現<strong>網址</strong>或<strong>頁面標題</strong>，請在即將彈出的列印視窗中進行以下設定：
+              </p>
+              <ul className="text-sm text-slate-700 space-y-2 list-disc pl-5 font-medium">
+                <li>點擊 <strong>「更多設定 (More settings)」</strong></li>
+                <li><strong className="text-red-600">取消勾選</strong> 「頁首和頁尾 (Headers and footers)」選項。</li>
+                <li>確保邊界 (Margins) 設為「預設 (Default)」或「無 (None)」。</li>
+              </ul>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowPrintHintModal(false)} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
+                取消列印
+              </button>
+              <button onClick={executePrint} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2 transition-colors">
+                <Check className="w-4 h-4"/> 我知道了，繼續列印
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -1999,6 +2053,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -2040,6 +2095,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showAddClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2062,6 +2118,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showClearClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-orange-500">
@@ -2075,6 +2132,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showClearAllModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600">
@@ -2088,6 +2146,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showDeleteClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2101,6 +2160,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showDeleteAllClassesModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
@@ -2114,6 +2174,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showAddTeacherModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2136,6 +2197,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showDeleteTeacherModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2149,6 +2211,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showDeleteAllTeachersModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
@@ -2162,6 +2225,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showDeduplicateModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-green-500">
@@ -2175,6 +2239,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
@@ -2298,6 +2363,7 @@ export default function App() {
         </div>
       )}
 
+      {}
       {showFeeReportModal && userRole === 'admin' && <FeeReportModal />}
     </div>
   );
