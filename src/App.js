@@ -67,9 +67,11 @@ export default function App() {
 
   const [requestTargetLesson, setRequestTargetLesson] = useState(null);
   const [editRequestData, setEditRequestData] = useState(null);
+  
   const [filterTeacherId, setFilterTeacherId] = useState(''); 
   const [filterPrintClassId, setFilterPrintClassId] = useState('');
-  const [filterDate, setFilterDate] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
 
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   
@@ -711,9 +713,43 @@ export default function App() {
     return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
+  const getBulkEmailUrl = (entityName, reqsToEmail) => {
+    const subject = `【嘉新國中】調代課通知總表 - ${entityName}`;
+    let body = `各位老師好：\n\n以下為 ${entityName} 近期的調代課異動總表，請查照：\n\n`;
+    
+    reqsToEmail.forEach((req, idx) => {
+      const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
+      const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
+      
+      const lesson = lessons.find(l => l.id === req.lessonId);
+      const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
+      const lessonTime = lesson ? `${DAYS[lesson.day-1]} 第 ${lesson.period} 節` : '未知';
+
+      const targetLesson = lessons.find(l => l.id === req.targetLessonId);
+      const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '未知班級';
+      const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
+
+      body += `【異動 ${idx + 1}】 ${req.type === 'sub' ? `請假代課 (${req.reason})` : '跨週調課'}\n`;
+      if (req.type === 'sub') {
+        body += `- 日期：${req.targetDate || '未指定'}\n`;
+        body += `- 班級：${className}\n`;
+        body += `- 時間：${lessonTime}\n`;
+        body += `- 科目：${lesson?.subject || '未知'}\n`;
+        body += `- 原授課老師：${requester}\n`;
+        body += `- 委託代課老師：${target}\n`;
+      } else {
+        body += `- 我方：${req.targetDate || '未指定'} | ${className} (${lessonTime}) | 原授課：${requester}\n`;
+        body += `- 對方：${req.targetSwapDate || '未指定'} | ${targetClassName} (${targetLessonTime}) | 對象師：${target}\n`;
+      }
+      body += `\n`;
+    });
+    
+    body += `嘉新國中教務處 敬上`;
+    return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   const FeeReportModal = () => {
     const reportData = useMemo(() => {
-      // 過濾出指定月份、已核准，且類型為「代課」的單子
       const filtered = requests.filter(r => 
         r.status === 'approved' && 
         r.type === 'sub' && 
@@ -748,7 +784,6 @@ export default function App() {
         });
       });
       
-      // 轉換成陣列並按照代課總節數由高到低排序
       return Object.values(stats).sort((a, b) => b.count - a.count);
     }, [feeReportMonth, requests, teachers, classes, lessons]);
 
@@ -813,8 +848,6 @@ export default function App() {
                               <span className="w-px h-4 bg-indigo-400 print:bg-slate-300"></span>
                               <span>共計 <span className="text-lg print:text-sm mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
                             </div>
-                            
-                            {/* 簽名欄位 */}
                             <div className="flex items-end gap-1 pt-1">
                               <span className="text-slate-500 print:text-black font-bold text-sm print:text-xs mb-0.5">簽名：</span>
                               <div className="w-32 sm:w-40 border-b-2 border-slate-300 print:border-black h-4"></div>
@@ -862,7 +895,6 @@ export default function App() {
     const day = data ? data.day : lesson.day;
     const period = data ? data.period : lesson.period;
 
-    // Resolve who is actually making the request (Admin acting on behalf of someone vs Teacher themselves)
     const actualRequesterId = editReq ? editReq.requesterId : (data?.requesterId || loggedTeacherId);
 
     const [requestType, setRequestType] = useState(editReq ? editReq.type : 'sub'); 
@@ -1064,7 +1096,6 @@ export default function App() {
 
     let displayRequests = [];
     if (isPublicView) {
-      // 全校動態：顯示所有已核准的單子
       displayRequests = requests.filter(r => r.status === 'approved');
     } else {
       displayRequests = userRole === 'admin' 
@@ -1085,8 +1116,20 @@ export default function App() {
       });
     }
 
-    if (filterDate) {
-      displayRequests = displayRequests.filter(r => r.targetDate === filterDate || r.targetSwapDate === filterDate);
+    if (filterStartDate || filterEndDate) {
+      displayRequests = displayRequests.filter(r => {
+        const datesToCheck = [];
+        if (r.targetDate) datesToCheck.push(r.targetDate);
+        if (r.type === 'swap' && r.targetSwapDate) datesToCheck.push(r.targetSwapDate);
+
+        if (datesToCheck.length === 0) return false;
+
+        return datesToCheck.some(date => {
+          if (filterStartDate && date < filterStartDate) return false;
+          if (filterEndDate && date > filterEndDate) return false;
+          return true;
+        });
+      });
     }
 
     const handleAction = async (id, newStatus) => {
@@ -1175,7 +1218,8 @@ export default function App() {
     const resetFilters = () => {
       setFilterTeacherId('');
       setFilterPrintClassId('');
-      setFilterDate('');
+      setFilterStartDate('');
+      setFilterEndDate('');
     };
 
     return (
@@ -1195,13 +1239,13 @@ export default function App() {
         <div className="p-4 border-b bg-slate-50 flex justify-between items-center print:hidden flex-wrap gap-3">
           <div>
             <h2 
-              onClick={() => { resetFilters(); setActiveTab(isPublicView ? 'public_requests' : (isArchiveView ? 'archive' : 'requests')); }} 
+              onClick={resetFilters} 
               className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
               title="點擊清除篩選，返回全校總表"
             >
               <FileText className="w-5 h-5 text-blue-600"/> 
               <span className="group-hover:underline">
-                {filterTeacherId || filterPrintClassId || filterDate
+                {filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate
                   ? `篩選檢視中 (點擊此處返回)` 
                   : (isPublicView ? '🌍 全校最新調代課動態' : (isArchiveView ? '歷史歸檔紀錄' : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄')))}
               </span>
@@ -1210,13 +1254,25 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <input 
-               type="date"
-               value={filterDate}
-               onChange={(e) => setFilterDate(e.target.value)}
-               className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs"
-               title="選擇日期篩選"
-            />
+            <div className="flex items-center gap-1.5 bg-white border border-gray-300 rounded-lg px-2 shadow-xs">
+              <span className="text-xs font-bold text-gray-500">區間:</span>
+              <input 
+                 type="date"
+                 value={filterStartDate}
+                 onChange={(e) => setFilterStartDate(e.target.value)}
+                 className="text-sm border-none focus:outline-none p-1.5 font-medium bg-transparent text-slate-700"
+                 title="開始日期"
+              />
+              <span className="text-gray-400">至</span>
+              <input 
+                 type="date"
+                 value={filterEndDate}
+                 onChange={(e) => setFilterEndDate(e.target.value)}
+                 className="text-sm border-none focus:outline-none p-1.5 font-medium bg-transparent text-slate-700"
+                 title="結束日期"
+              />
+            </div>
+            
             <select 
                value={filterPrintClassId} 
                onChange={(e) => setFilterPrintClassId(e.target.value)} 
@@ -1235,7 +1291,7 @@ export default function App() {
                {teachers.map(t => <option key={t.id} value={t.id}>篩選：{t.name} 老師</option>)}
             </select>
 
-            {(filterTeacherId || filterPrintClassId || filterDate) && (
+            {(filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate) && (
               <button 
                 onClick={resetFilters} 
                 className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-300 transition-colors"
@@ -1247,7 +1303,7 @@ export default function App() {
             {userRole === 'admin' && !isPublicView && (
               <div className="flex items-center gap-1.5 bg-slate-200/50 border border-slate-300 px-3 py-1.5 rounded-lg">
                 <span className="text-xs font-bold text-slate-700">
-                  {filterTeacherId || filterPrintClassId || filterDate ? '目前列表待審' : '全校待審'}: {currentPendingCount}張
+                  {filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate ? '目前列表待審' : '全校待審'}: {currentPendingCount}張
                 </span>
                 <button 
                   onClick={() => handleBatchAction('approved')} 
@@ -1269,7 +1325,6 @@ export default function App() {
                     const isClass = !!filterPrintClassId;
                     const entityName = isClass ? (selectedPrintClassObj?.name || '') : (selectedTeacherObj?.name || '');
                     
-                    // 直接抓取目前畫面上顯示，並且是「已核准」狀態的單子（無視是否歸檔，所見即所得）
                     const reqsToEmail = displayRequests.filter(r => r.status === 'approved');
                     
                     if (reqsToEmail.length === 0) {
@@ -1524,7 +1579,6 @@ export default function App() {
                     const teacherName = lesson ? (teachers.find(t => t.id === lesson.teacherId)?.name || '未知') : '';
                     const className = lesson ? (classes.find(c => c.id === lesson.classId)?.name || lesson.classId) : '';
                     
-                    // Logic to determine if a block can be clicked to initiate a request
                     const isMyOwnSchedule = userRole === 'teacher' && viewMode === 'teacher' && selectedTeacher === loggedTeacherId;
                     const isAdmin = userRole === 'admin';
                     const canInitiateRequest = isMyOwnSchedule || isAdmin;
@@ -1535,7 +1589,6 @@ export default function App() {
                           <div 
                             onClick={(e) => { 
                               if(canInitiateRequest && !isEditing) {
-                                // Important: explicitly pass the target lesson's teacher as the requester
                                 setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
                               }
                             }}
@@ -1567,7 +1620,6 @@ export default function App() {
                               </>
                             )}
                             
-                            {/* Overlay message for initiating request */}
                             {(canInitiateRequest && !isEditing) && (
                               <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/90' : 'bg-indigo-600/90'} text-white rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0`}>
                                 <span className="text-sm mb-0.5">✨</span>
@@ -1632,7 +1684,8 @@ export default function App() {
                   setIsEditing(false);
                   setFilterTeacherId('');
                   setFilterPrintClassId('');
-                  setFilterDate('');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
@@ -1644,7 +1697,8 @@ export default function App() {
                   setIsEditing(false);
                   setFilterTeacherId('');
                   setFilterPrintClassId('');
-                  setFilterDate('');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
@@ -1661,7 +1715,8 @@ export default function App() {
                   setIsEditing(false);
                   setFilterTeacherId('');
                   setFilterPrintClassId('');
-                  setFilterDate('');
+                  setFilterStartDate('');
+                  setFilterEndDate('');
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
