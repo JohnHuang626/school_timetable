@@ -86,6 +86,7 @@ export default function App() {
   const [showClearClassModal, setShowClearClassModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showDeleteArchivedModal, setShowDeleteArchivedModal] = useState(false);
 
   const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
   const [newTeacherName, setNewTeacherName] = useState('');
@@ -1222,6 +1223,32 @@ export default function App() {
       setFilterEndDate('');
     };
 
+    const executeDeleteArchived = async () => {
+      try {
+        const batches = [];
+        let currentBatch = writeBatch(db);
+        let opCount = 0;
+
+        displayRequests.forEach(r => {
+          currentBatch.delete(doc(db, 'requests', r.id));
+          opCount++;
+          if (opCount >= 450) {
+            batches.push(currentBatch.commit());
+            currentBatch = writeBatch(db);
+            opCount = 0;
+          }
+        });
+
+        if (opCount > 0) batches.push(currentBatch.commit());
+        await Promise.all(batches);
+
+        setShowDeleteArchivedModal(false);
+        showMessage('success', `🗑️ 已成功永久刪除 ${displayRequests.length} 筆歸檔紀錄！`);
+      } catch(err) {
+        showMessage('error', '❌ 刪除失敗：' + err.message);
+      }
+    };
+
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
@@ -1303,23 +1330,31 @@ export default function App() {
             {userRole === 'admin' && !isPublicView && (
               <div className="flex items-center gap-1.5 bg-slate-200/50 border border-slate-300 px-3 py-1.5 rounded-lg">
                 <span className="text-xs font-bold text-slate-700">
-                  {filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate ? '目前列表待審' : '全校待審'}: {currentPendingCount}張
+                  {isArchiveView 
+                    ? `目前列表歸檔: ${displayRequests.length}張`
+                    : (filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate ? `目前列表待審: ${currentPendingCount}張` : `全校待審: ${currentPendingCount}張`)
+                  }
                 </span>
-                <button 
-                  onClick={() => handleBatchAction('approved')} 
-                  disabled={currentPendingCount === 0}
-                  className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次核准' : '全部核准'}
-                </button>
-                <button 
-                  onClick={() => handleBatchAction('rejected')} 
-                  disabled={currentPendingCount === 0}
-                  className="px-2.5 py-1 bg-red-600 text-white rounded-md text-xs font-bold hover:bg-red-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
-                >
-                  <X className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次退回' : '全部退回'}
-                </button>
                 
+                {!isArchiveView && (
+                  <>
+                    <button 
+                      onClick={() => handleBatchAction('approved')} 
+                      disabled={currentPendingCount === 0}
+                      className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次核准' : '全部核准'}
+                    </button>
+                    <button 
+                      onClick={() => handleBatchAction('rejected')} 
+                      disabled={currentPendingCount === 0}
+                      className="px-2.5 py-1 bg-red-600 text-white rounded-md text-xs font-bold hover:bg-red-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次退回' : '全部退回'}
+                    </button>
+                  </>
+                )}
+
                 {(filterTeacherId || filterPrintClassId) && (
                   (() => {
                     const isClass = !!filterPrintClassId;
@@ -1362,13 +1397,23 @@ export default function App() {
                 )}
                 
                 {isArchiveView && (
-                  <button 
-                    onClick={() => setShowFeeReportModal(true)} 
-                    className="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 flex items-center gap-1 shadow-xs transition-colors ml-1 print:hidden"
-                    title="按月份統計各老師代課節數，方便結算代課費"
-                  >
-                    <Calendar className="w-3.5 h-3.5"/> 鐘點費結算表
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => setShowFeeReportModal(true)} 
+                      className="px-2.5 py-1 bg-indigo-600 text-white rounded-md text-xs font-bold hover:bg-indigo-700 flex items-center gap-1 shadow-xs transition-colors ml-1 print:hidden"
+                      title="按月份統計各老師代課節數，方便結算代課費"
+                    >
+                      <Calendar className="w-3.5 h-3.5"/> 鐘點費結算表
+                    </button>
+                    <button 
+                      onClick={() => setShowDeleteArchivedModal(true)} 
+                      disabled={displayRequests.length === 0}
+                      className="px-2.5 py-1 bg-red-600 text-white rounded-md text-xs font-bold hover:bg-red-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors ml-1 print:hidden"
+                      title="永久刪除目前列表中的歷史歸檔紀錄"
+                    >
+                      <Trash2 className="w-3.5 h-3.5"/> 全部刪除
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -1515,6 +1560,19 @@ export default function App() {
             </table>
           )}
         </div>
+
+        {showDeleteArchivedModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 print:hidden">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600 animate-in zoom-in-95 duration-200">
+              <h3 className="text-lg font-bold text-red-600 mb-2 flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> 危險操作警告</h3>
+              <p className="text-gray-600 text-sm mb-6">您即將永久刪除目前列表中的 <strong>{displayRequests.length}</strong> 筆歸檔紀錄，此操作無法復原！請問是否確認刪除？</p>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowDeleteArchivedModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">取消</button>
+                <button onClick={executeDeleteArchived} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm">確定永久刪除</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
