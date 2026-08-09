@@ -790,56 +790,56 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none">
+                  <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none print:mb-2 print:p-2">
                     <span>本月全校代課總計與鐘點費結算</span>
                     <div className="flex items-center gap-4">
-                      <span className="text-2xl">{totalFees} <span className="text-sm font-medium">節</span></span>
+                      <span className="text-2xl print:text-lg">{totalFees} <span className="text-sm font-medium">節</span></span>
                       <span className="text-indigo-300 print:text-slate-400">|</span>
-                      <span className="text-2xl text-red-600 print:text-black font-extrabold">{(totalFees * 455).toLocaleString()} <span className="text-sm font-bold text-indigo-900 print:text-black">元</span></span>
+                      <span className="text-2xl print:text-lg text-red-600 print:text-black font-extrabold">{(totalFees * 455).toLocaleString()} <span className="text-sm font-bold text-indigo-900 print:text-black">元</span></span>
                     </div>
                   </div>
                   
-                  <div className="grid gap-6">
+                  <div className="grid gap-6 print:gap-2">
                     {reportData.map((data, idx) => (
-                      <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black print:mb-6 shadow-sm">
-                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-slate-200">
-                          <span className="text-base flex items-center gap-2">
+                      <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black shadow-sm print:rounded-none">
+                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-slate-100 print:p-1.5">
+                          <span className="text-base flex items-center gap-2 print:text-sm">
                             <User className="w-4 h-4 text-slate-500 print:hidden"/>
-                            代課教師：<span className="text-indigo-700 print:text-black text-lg">{data.teacher?.name || '未知'}</span>
+                            代課教師：<span className="text-indigo-700 print:text-black text-lg print:text-base">{data.teacher?.name || '未知'}</span>
                           </span>
                           <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                            <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm flex items-center gap-2">
-                              <span>本月共代 <span className="text-lg mx-1">{data.count}</span> 節</span>
+                            <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm flex items-center gap-2 print:px-2 print:py-0.5 print:text-xs print:rounded-sm">
+                              <span>本月共代 <span className="text-lg print:text-sm mx-1">{data.count}</span> 節</span>
                               <span className="w-px h-4 bg-indigo-400 print:bg-slate-300"></span>
-                              <span>共計 <span className="text-lg mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
+                              <span>共計 <span className="text-lg print:text-sm mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
                             </div>
                             
-                            {/* 新增的簽名欄位 */}
+                            {/* 簽名欄位 */}
                             <div className="flex items-end gap-1 pt-1">
-                              <span className="text-slate-500 print:text-black font-bold text-sm print:text-base mb-0.5">簽名：</span>
+                              <span className="text-slate-500 print:text-black font-bold text-sm print:text-xs mb-0.5">簽名：</span>
                               <div className="w-32 sm:w-40 border-b-2 border-slate-300 print:border-black h-4"></div>
                             </div>
                           </div>
                         </div>
                         <div className="p-0 overflow-x-auto print:overflow-visible">
-                          <table className="w-full text-sm text-left border-collapse">
+                          <table className="w-full text-sm text-left border-collapse print:text-xs">
                             <thead>
-                              <tr className="bg-slate-50 text-slate-600 border-b print:bg-white">
-                                <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap">代課日期</th>
-                                <th className="p-3 font-semibold w-24 whitespace-nowrap">請假老師</th>
-                                <th className="p-3 font-semibold w-20 whitespace-nowrap">假別</th>
-                                <th className="p-3 font-semibold w-28 whitespace-nowrap">授課班級</th>
-                                <th className="p-3 font-semibold whitespace-nowrap">代課節次</th>
+                              <tr className="bg-slate-50 text-slate-600 border-b print:bg-white print:border-black">
+                                <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap print:p-1 print:pl-2">代課日期</th>
+                                <th className="p-3 font-semibold w-24 whitespace-nowrap print:p-1">請假老師</th>
+                                <th className="p-3 font-semibold w-20 whitespace-nowrap print:p-1">假別</th>
+                                <th className="p-3 font-semibold w-28 whitespace-nowrap print:p-1">授課班級</th>
+                                <th className="p-3 font-semibold whitespace-nowrap print:p-1">代課節次</th>
                               </tr>
                             </thead>
                             <tbody>
                               {data.details.sort((a,b) => a.date.localeCompare(b.date)).map((det, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-slate-50 print:border-b print:border-slate-300">
-                                  <td className="p-3 pl-5 text-indigo-700 font-bold whitespace-nowrap">{det.date}</td>
-                                  <td className="p-3 text-slate-700 font-medium">{det.originalTeacher}</td>
-                                  <td className="p-3"><span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-300 shadow-xs">{det.reason}</span></td>
-                                  <td className="p-3 font-bold text-slate-800">{det.className}</td>
-                                  <td className="p-3 text-slate-600 font-medium">{det.periodStr}</td>
+                                  <td className="p-3 pl-5 text-indigo-700 font-bold whitespace-nowrap print:p-1 print:pl-2 print:text-black">{det.date}</td>
+                                  <td className="p-3 text-slate-700 font-medium print:p-1">{det.originalTeacher}</td>
+                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-300 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0">{det.reason}</span></td>
+                                  <td className="p-3 font-bold text-slate-800 print:p-1">{det.className}</td>
+                                  <td className="p-3 text-slate-600 font-medium print:p-1">{det.periodStr}</td>
                                 </tr>
                               ))}
                             </tbody>
