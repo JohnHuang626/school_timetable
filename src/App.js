@@ -1522,7 +1522,7 @@ export default function App() {
           {displayRequests.length === 0 ? (
             <div className="text-center py-12 text-slate-400 font-medium">目前沒有符合條件的申請紀錄。</div>
           ) : (
-            <table className="w-full text-sm text-left border-collapse">
+            <table className="w-full text-sm text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 border-b print:bg-slate-200 print:text-black">
                   <th className="p-3 font-semibold">發生日期</th>
@@ -1804,7 +1804,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto">
+    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden">
       {/* 專屬列印樣式：強制隱藏瀏覽器預設的頁首(日期)與頁尾(網址)，並解除所有高度限制防止空白頁 */}
       <style>
         {`
@@ -1831,7 +1831,7 @@ export default function App() {
       </style>
       
       <header className="bg-blue-700 text-white shadow-md sticky top-0 z-30 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
           <div 
             className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity select-none"
             onClick={() => {
@@ -1847,21 +1847,21 @@ export default function App() {
           >
             <BookOpen className="w-8 h-8 text-blue-200" />
             <div>
-              <h1 className="text-xl font-bold tracking-wide">嘉義縣立嘉新國民中學</h1>
+              <h1 className="text-xl md:text-2xl font-bold tracking-wide">嘉義縣立嘉新國民中學</h1>
               <p className="text-xs text-blue-200">智慧課表與代調課系統</p>
             </div>
           </div>
 
-          <nav className="flex items-center space-x-2 my-2 sm:my-0">
+          <nav className="flex flex-wrap items-center gap-2 my-2 sm:my-0">
           <button 
             onClick={() => {setActiveTab('schedule'); setViewMode('class'); setIsEditing(false);}}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'class' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'class' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
           >
             🏫 班級課表
           </button>
           <button 
             onClick={() => {setActiveTab('schedule'); setViewMode('teacher'); setIsEditing(false);}}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'teacher' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'teacher' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
           >
             📅 教師課表
           </button>
@@ -1876,7 +1876,7 @@ export default function App() {
                   setFilterStartDate('');
                   setFilterEndDate('');
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
                 🌍 全校動態
               </button>
@@ -1889,11 +1889,11 @@ export default function App() {
                   setFilterStartDate('');
                   setFilterEndDate('');
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
                 📋 {userRole === 'admin' ? '審核中心' : '我的申請'}
                 {userRole === 'admin' && requests.filter(r => r.status === 'pending' && !r.isArchived).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] md:text-xs px-1.5 py-0.5 rounded-full animate-pulse">
                     {requests.filter(r => r.status === 'pending' && !r.isArchived).length}
                   </span>
                 )}
@@ -1907,7 +1907,7 @@ export default function App() {
                   setFilterStartDate('');
                   setFilterEndDate('');
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
               >
                 🗂️ 歷史歸檔
               </button>
@@ -1915,105 +1915,106 @@ export default function App() {
           )}
         </nav>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 md:space-x-3 w-full sm:w-auto justify-end">
             {userRole === 'teacher' && (
               <button onClick={() => { setPwdMessage({ type: '', text: '' }); setShowPwdModal(true); }} className="p-2 text-amber-300 hover:text-white transition" title="修改密碼">
-                <Key className="w-5 h-5"/>
+                <Key className="w-4 h-4 md:w-5 md:h-5"/>
               </button>
             )}
             <button 
               onClick={() => userRole !== 'guest' ? handleLogout() : setShowLoginModal(true)}
-              className={`flex items-center space-x-1 px-4 py-2 rounded-lg text-sm font-semibold shadow transition ${userRole !== 'guest' ? 'bg-blue-800 text-white border border-blue-600' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
+              className={`flex items-center space-x-1 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold shadow transition ${userRole !== 'guest' ? 'bg-blue-800 text-white border border-blue-600' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
             >
-              {userRole !== 'guest' ? <><Unlock className="w-4 h-4"/> <span>登出 ({userRole === 'admin' ? '管理者' : '教師'})</span></> : <><Lock className="w-4 h-4"/> <span>教師登入</span></>}
+              {userRole !== 'guest' ? <><Unlock className="w-3 h-3 md:w-4 md:h-4"/> <span>登出 ({userRole === 'admin' ? '管理員' : '教師'})</span></> : <><Lock className="w-3 h-3 md:w-4 md:h-4"/> <span>教師登入</span></>}
             </button>
           </div>
         </div>
       </header>
 
-      <main className={`max-w-7xl mx-auto px-4 py-6 print:p-0 ${showFeeReportModal ? 'print:hidden' : ''}`}>
-        <div className="space-y-6">
+      <main className={`max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-6 print:p-0 ${showFeeReportModal ? 'print:hidden' : ''}`}>
+        <div className="space-y-4 md:space-y-6">
           {importStatus.message && (
-            <div className={`print:hidden border px-4 py-3 rounded-xl flex items-center gap-2 font-bold shadow-sm ${importStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            <div className={`print:hidden border px-4 py-3 rounded-xl flex items-center gap-2 font-bold shadow-sm text-sm md:text-base ${importStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
               {importStatus.type === 'error' ? <AlertTriangle className="w-5 h-5"/> : <CheckCircle2 className="w-5 h-5"/>} {importStatus.message}
             </div>
           )}
 
           {userRole === 'admin' && classes.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm print:hidden flex justify-between items-center">
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm print:hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
               <h3 className="font-bold text-amber-800">雲端資料庫目前為空</h3>
               <p className="text-amber-700 text-sm">請點擊右方按鈕載入初始預設資料。</p>
             </div>
-            <button onClick={initializeDatabase} className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow">
-              🔄 載入初始預設資料
+            <button onClick={initializeDatabase} className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow text-sm w-full md:w-auto">
+              🔄 載入預設資料
             </button>
           </div>
         )}
         
+        {}
         {(activeTab === 'requests' || activeTab === 'archive' || activeTab === 'public_requests') ? (
           renderRequestsView()
         ) : (
           <>
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4 print:hidden">
-                <div className="flex items-center gap-3 flex-wrap">
+            <div className="bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 print:hidden">
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full md:w-auto">
                   <span className="font-bold text-slate-700">選擇檢視{viewMode === 'class' ? '班級' : '教師'}：</span>
                   {viewMode === 'class' ? (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsEditing(false);}} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] sm:max-w-xs truncate">
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                      <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsEditing(false);}} className="border border-slate-300 rounded-lg px-3 md:px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-auto md:max-w-[150px] truncate">
                         {classes.map(c => <option key={c.id} value={c.id}>{c.name.length > 30 ? c.name.substring(0, 30) + '...' : c.name}</option>)}
                       </select>
                       {userRole === 'admin' && (
-                        <div className="flex items-center gap-1 ml-2 flex-wrap">
-                          <button onClick={() => setShowAddClassModal(true)} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-bold flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1 md:ml-2 w-full md:w-auto mt-2 md:mt-0">
+                          <button onClick={() => setShowAddClassModal(true)} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
                             <Plus className="w-4 h-4"/> 新增
                           </button>
                           {classes.length > 0 && (
-                            <button onClick={() => { setClassToDelete(selectedClass); setShowDeleteClassModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center gap-1">
+                            <button onClick={() => { setClassToDelete(selectedClass); setShowDeleteClassModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
                               <Trash2 className="w-4 h-4"/> 刪除
                             </button>
                           )}
                           {classes.length > 0 && (
-                            <button onClick={() => setShowDeleteAllClassesModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
-                              <AlertTriangle className="w-4 h-4"/> 刪除所有班級
+                            <button onClick={() => setShowDeleteAllClassesModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                              <AlertTriangle className="w-4 h-4"/> 刪除全部
                             </button>
                           )}
                           {classes.some(c => c.name.length > 30 || c.name.includes('') || c.name.includes('?')) && (
-                            <button onClick={executeDeleteGarbledClasses} className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
-                              <Eraser className="w-4 h-4"/> 清除亂碼資料
+                            <button onClick={executeDeleteGarbledClasses} className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                              <Eraser className="w-4 h-4"/> 清除亂碼
                             </button>
                           )}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <select value={teacherSortMode} onChange={(e) => setTeacherSortMode(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                      <select value={teacherSortMode} onChange={(e) => setTeacherSortMode(e.target.value)} className="border border-slate-300 rounded-lg px-2 md:px-3 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-[48%] md:w-auto">
                         <option value="default">預設排序</option>
                         <option value="subject">依科目</option>
-                        <option value="name">依姓名筆畫</option>
+                        <option value="name">依姓名</option>
                       </select>
-                      <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] sm:max-w-xs truncate">
+                      <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 rounded-lg px-3 md:px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-[48%] md:w-auto md:max-w-[150px] truncate">
                         {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name.length > 20 ? t.name.substring(0, 20) + '...' : t.name} ({t.displaySubject?.length > 10 ? t.displaySubject.substring(0, 10) + '...' : t.displaySubject})</option>)}
                       </select>
 
                       {userRole === 'admin' && (
-                        <div className="flex items-center gap-1 ml-2">
-                          <button onClick={() => setShowAddTeacherModal(true)} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-bold flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1 w-full md:w-auto md:ml-2 mt-2 md:mt-0">
+                          <button onClick={() => setShowAddTeacherModal(true)} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
                             <Plus className="w-4 h-4"/> 新增
                           </button>
                           {teachers.length > 0 && (
-                            <button onClick={() => { setTeacherToDelete(selectedTeacher); setShowDeleteTeacherModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center gap-1">
+                            <button onClick={() => { setTeacherToDelete(selectedTeacher); setShowDeleteTeacherModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
                             <Trash2 className="w-4 h-4"/> 刪除
                           </button>
                         )}
                         {teachers.length > 0 && (
                           <>
-                            <button onClick={() => setShowDeduplicateModal(true)} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
+                            <button onClick={() => setShowDeduplicateModal(true)} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
                               <Eraser className="w-4 h-4"/> 合併重複
                             </button>
-                            <button onClick={() => setShowDeleteAllTeachersModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
-                              <AlertTriangle className="w-4 h-4"/> 刪除所有教師
+                            <button onClick={() => setShowDeleteAllTeachersModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                              <AlertTriangle className="w-4 h-4"/> 刪除全部
                             </button>
                           </>
                         )}
@@ -2021,10 +2022,10 @@ export default function App() {
                     )}
 
                     {userRole === 'teacher' && selectedTeacher === loggedTeacherId && (
-                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200">我的專屬課表</span>
+                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 mt-2 md:mt-0">我的專屬課表</span>
                       )}
                       {userRole === 'teacher' && selectedTeacher !== loggedTeacherId && (
-                        <button onClick={() => setSelectedTeacher(loggedTeacherId)} className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 flex items-center gap-1 transition shadow-xs">
+                        <button onClick={() => setSelectedTeacher(loggedTeacherId)} className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-center gap-1 transition shadow-xs w-full md:w-auto mt-2 md:mt-0">
                           <ArrowLeft className="w-4 h-4"/> 返回我的課表
                         </button>
                       )}
@@ -2034,20 +2035,20 @@ export default function App() {
 
                 {viewMode === 'class' && userRole === 'admin' && (
                   isEditing ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold">取消</button>
-                      <button onClick={saveEditing} className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 shadow-sm">
+                    <div className="flex gap-2 w-full md:w-auto mt-3 md:mt-0">
+                      <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold flex-1 md:flex-none">取消</button>
+                      <button onClick={saveEditing} className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-sm flex-1 md:flex-none">
                         <Save className="w-4 h-4"/> 儲存至雲端
                       </button>
                     </div>
                   ) : (
-                    <div className="flex gap-2 flex-wrap">
-                      <button onClick={() => setShowClearClassModal(true)} className="px-3 py-2 bg-orange-50 text-orange-600 border border-orange-200 rounded-lg text-sm font-bold hover:bg-orange-100">清空本班</button>
-                      <button onClick={() => setShowClearAllModal(true)} className="px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100">清空全部</button>
-                      <button onClick={() => setShowImportModal(true)} className="px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-sm font-bold hover:bg-purple-100 flex items-center gap-1">
+                    <div className="flex flex-wrap gap-2 w-full md:w-auto mt-3 md:mt-0">
+                      <button onClick={() => setShowClearClassModal(true)} className="px-3 py-2 bg-orange-50 text-orange-600 border border-orange-200 rounded-lg text-sm font-bold hover:bg-orange-100 flex-1 md:flex-none">清空本班</button>
+                      <button onClick={() => setShowClearAllModal(true)} className="px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100 flex-1 md:flex-none">清空全部</button>
+                      <button onClick={() => setShowImportModal(true)} className="px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-sm font-bold hover:bg-purple-100 flex items-center justify-center gap-1 flex-1 md:flex-none">
                         <Upload className="w-4 h-4"/> 匯入 CSV
                       </button>
-                      <button onClick={startEditing} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-blue-700 shadow-sm">
+                      <button onClick={startEditing} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-1 hover:bg-blue-700 shadow-sm flex-1 md:flex-none">
                         <Edit className="w-4 h-4"/> 快速編輯
                       </button>
                     </div>
@@ -2064,7 +2065,6 @@ export default function App() {
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
-      {}
       {showPrintHintModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm print:hidden">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border-t-4 border-blue-600">
@@ -2103,7 +2103,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -2140,7 +2139,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
@@ -2182,7 +2180,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showAddClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2205,7 +2202,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showClearClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-orange-500">
@@ -2219,7 +2215,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showClearAllModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600">
@@ -2233,7 +2228,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showDeleteClassModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2247,7 +2241,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showDeleteAllClassesModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
@@ -2261,7 +2254,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showAddTeacherModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2284,7 +2276,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showDeleteTeacherModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
@@ -2298,7 +2289,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showDeleteAllTeachersModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
@@ -2312,7 +2302,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showDeduplicateModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-green-500">
@@ -2326,7 +2315,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showImportModal && userRole === 'admin' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
@@ -2350,7 +2338,6 @@ export default function App() {
                 
                 showMessage('success', '🔄 正在讀取並準備寫入雲端 (請勿關閉網頁)...');
                 
-                // 建立一個讀取檔案的 Promise 函式，方便我們切換編碼
                 const readFileAs = (f, encoding) => new Promise((resolve) => {
                   const r = new FileReader();
                   r.onload = evt => resolve(evt.target.result);
@@ -2358,16 +2345,13 @@ export default function App() {
                 });
 
                 try {
-                  // 1. 優先以標準 UTF-8 讀取
                   let text = await readFileAs(file, 'utf-8');
                   
-                  // 2. 如果發現 UTF-8 解析出來有預設的亂碼替換字元 ()，代表這極有可能是台灣 Excel 預設存出的 Big5 編碼檔案
                   if (text.includes('')) {
                     console.log("偵測到可能的 Big5 編碼，系統正在自動切換解碼器...");
                     text = await readFileAs(file, 'big5');
                   }
                   
-                  // 3. 如果檔案內含有 Null byte (二進位空字元)，這絕對不是純文字檔 (通常是使用者直接把 .xlsx 改名成 .csv)
                   if (text.includes('\x00')) {
                      showMessage('error', '❌ 匯入失敗：這似乎是 Excel 檔 (.xlsx) 直接修改副檔名造成的。請在 Excel 中打開該檔案，並點選「另存新檔 -> CSV (逗號分隔)」來產生標準檔案。');
                      setShowImportModal(false);
@@ -2399,11 +2383,10 @@ export default function App() {
                     const tName = tNameRaw.trim();
                     if (!cName || !tName || !dStr || !pStr) continue;
 
-                    // 強化過濾異常教師名稱 (例如：純數字、班級代碼+括號、單純標點符號)
                     const isInvalidTeacherName = (name) => {
-                      if (/^\s*\d+\s*$/.test(name)) return true; // 純數字
-                      if (/^\d{2,4}\s*(?:\(\d+\)|-\d+)$/.test(name)) return true; // 類似 "701 (1)", "902-2"
-                      if (/^[^\u4e00-\u9fa5a-zA-Z]+$/.test(name)) return true; // 完全沒有中文或英文字母 (全是符號)
+                      if (/^\s*\d+\s*$/.test(name)) return true;
+                      if (/^\d{2,4}\s*(?:\(\d+\)|-\d+)$/.test(name)) return true; 
+                      if (/^[^\u4e00-\u9fa5a-zA-Z]+$/.test(name)) return true;
                       return false;
                     };
 
@@ -2483,7 +2466,7 @@ export default function App() {
                       showMessage('error', '❌ 處理檔案時發生錯誤：' + err.message);
                     }
                 } finally {
-                  e.target.value = ''; // 確保下次選同一個檔案也能觸發 onChange
+                  e.target.value = ''; 
                 }
               }}
               className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer"
@@ -2496,7 +2479,6 @@ export default function App() {
         </div>
       )}
 
-      {}
       {showFeeReportModal && userRole === 'admin' && <FeeReportModal />}
     </div>
   );
