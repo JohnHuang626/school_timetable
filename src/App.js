@@ -48,6 +48,7 @@ export default function App() {
     document.title = "嘉新課表與調代課系統";
 
     // 2. 加入 viewport 設定，防止手機版將整個網頁強制縮小，讓使用者能維持正常字體大小並左右滑動
+    // 移除 user-scalable=no 讓使用者可以自由雙指縮放
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
@@ -58,7 +59,7 @@ export default function App() {
 
     // 3. 動態產生並注入 Favicon (學校圖示)
     const setFavicon = () => {
-      const emoji = '🏫'; // 您也可以改成 '📅' 或 '📖'
+      const emoji = '🏫';
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
       const iconUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
       
@@ -147,14 +148,12 @@ export default function App() {
     const unsubClasses = onSnapshot(collection(db, 'classes'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.id.localeCompare(b.id));
       setClasses(data);
-      if (data.length > 0 && !selectedClass) setSelectedClass(data[0].id);
     }, handleFirebaseError);
 
     const unsubTeachers = onSnapshot(collection(db, 'teachers'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
       setTeachers(data);
       if (data.length > 0 && !selectedLoginTeacher) setSelectedLoginTeacher(data[0].id);
-      if (data.length > 0 && !selectedTeacher) setSelectedTeacher(data[0].id);
     }, handleFirebaseError);
 
     const unsubLessons = onSnapshot(collection(db, 'lessons'), (snapshot) => {
@@ -759,7 +758,7 @@ export default function App() {
 
   useEffect(() => {
     if (sortedTeachers.length > 0 && !selectedTeacher && sortedTeachers.some(t => t.id !== undefined)) {
-      setSelectedTeacher('');
+      setSelectedTeacher(sortedTeachers[0].id);
     }
   }, [sortedTeachers, selectedTeacher]);
 
@@ -915,7 +914,7 @@ export default function App() {
               </div>
               
               {reportData.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 font-bold bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                <div className="text-center py-16 text-slate-400 font-bold bg-slate-50 rounded-lg border border-dashed border-slate-300 print:hidden">
                   該月份目前沒有任何已核准的請假代課紀錄。
                 </div>
               ) : (
@@ -932,16 +931,16 @@ export default function App() {
                   <div className="grid gap-6 print:gap-2">
                     {reportData.map((data, idx) => (
                       <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black shadow-sm print:rounded-none">
-                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-slate-100 print:p-1.5">
+                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-transparent print:p-1">
                           <span className="text-base flex items-center gap-2 print:text-sm">
                             <User className="w-4 h-4 text-slate-500 print:hidden"/>
                             代課教師：<span className="text-indigo-700 print:text-black text-lg print:text-base">{data.teacher?.name || '未知'}</span>
                           </span>
                           <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                            <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-white print:border print:border-black shadow-sm flex items-center gap-2 print:px-2 print:py-0.5 print:text-xs print:rounded-sm">
-                              <span>本月共代 <span className="text-lg print:text-sm mx-1">{data.count}</span> 節</span>
-                              <span className="w-px h-4 bg-indigo-400 print:bg-slate-300"></span>
-                              <span>共計 <span className="text-lg print:text-sm mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
+                            <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-transparent print:border print:border-black shadow-sm flex items-center gap-2 print:px-2 print:py-0 print:text-[11px] print:rounded-sm">
+                              <span>本月共代 <span className="text-lg print:text-xs mx-1">{data.count}</span> 節</span>
+                              <span className="w-px h-4 bg-indigo-400 print:bg-slate-400"></span>
+                              <span>共計 <span className="text-lg print:text-xs mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
                             </div>
                             <div className="flex items-end gap-1 pt-1">
                               <span className="text-slate-500 print:text-black font-bold text-sm print:text-xs mb-0.5">簽名：</span>
@@ -950,10 +949,10 @@ export default function App() {
                           </div>
                         </div>
                         <div className="p-0 overflow-x-auto print:overflow-visible">
-                          <table className="w-full text-sm text-left border-collapse print:text-xs">
+                          <table className="w-full text-sm text-left border-collapse print:text-[11px]">
                             <thead>
-                              <tr className="bg-slate-50 text-slate-600 border-b print:bg-white print:border-black">
-                                <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap print:p-1 print:pl-2">代課日期</th>
+                              <tr className="bg-slate-50 text-slate-600 border-b print:bg-transparent print:border-black">
+                                <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap print:p-1 print:pl-1">代課日期</th>
                                 <th className="p-3 font-semibold w-24 whitespace-nowrap print:p-1">請假老師</th>
                                 <th className="p-3 font-semibold w-20 whitespace-nowrap print:p-1">假別</th>
                                 <th className="p-3 font-semibold w-28 whitespace-nowrap print:p-1">授課班級</th>
@@ -963,9 +962,9 @@ export default function App() {
                             <tbody>
                               {data.details.sort((a,b) => a.date.localeCompare(b.date)).map((det, i) => (
                                 <tr key={i} className="border-b last:border-0 hover:bg-slate-50 print:border-b print:border-slate-300">
-                                  <td className="p-3 pl-5 text-indigo-700 font-bold whitespace-nowrap print:p-1 print:pl-2 print:text-black">{det.date}</td>
+                                  <td className="p-3 pl-5 text-indigo-700 font-bold whitespace-nowrap print:p-1 print:pl-1 print:text-black">{det.date}</td>
                                   <td className="p-3 text-slate-700 font-medium print:p-1">{det.originalTeacher}</td>
-                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-300 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0">{det.reason}</span></td>
+                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-300 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0 print:text-[11px]">{det.reason}</span></td>
                                   <td className="p-3 font-bold text-slate-800 print:p-1">{det.className}</td>
                                   <td className="p-3 text-slate-600 font-medium print:p-1">{det.periodStr}</td>
                                 </tr>
