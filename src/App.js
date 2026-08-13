@@ -52,10 +52,10 @@ export default function App() {
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
-      viewportMeta.name = "viewport";
       document.head.appendChild(viewportMeta);
     }
-    viewportMeta.content = "width=device-width, initial-scale=1.0";
+    viewportMeta.name = "viewport";
+    viewportMeta.content = "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes";
 
     // 3. 動態產生並注入 Favicon (學校圖示)
     const setFavicon = () => {
@@ -1666,13 +1666,13 @@ export default function App() {
 
   const renderSchedule = () => {
     return (
-      <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-gray-200">
-        <table className="w-full text-sm text-center border-collapse min-w-[800px]">
+      <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
+        <table className="w-full text-center border-collapse min-w-[480px] lg:min-w-[800px]">
           <thead>
             <tr className="bg-slate-50 text-slate-700">
-              <th className="border-b border-r p-3 w-28 font-semibold bg-slate-100">節次 / 時間</th>
+              <th className="border-b border-r border-slate-200 p-2 md:p-3 w-16 md:w-28 font-semibold bg-slate-100 text-xs md:text-sm">節次 / 時間</th>
               {DAYS.map((day, idx) => (
-                <th key={idx} className="border-b p-3 font-semibold w-[18%]">{day}</th>
+                <th key={idx} className="border-b border-slate-200 p-2 md:p-3 font-semibold w-[16%] md:w-[18%] text-xs md:text-sm">{day}</th>
               ))}
             </tr>
           </thead>
@@ -1681,20 +1681,20 @@ export default function App() {
               if (period.isBreak) {
                 return (
                   <tr key="break" className="bg-slate-50/50">
-                    <td className="border-r border-b p-2 font-medium text-slate-500 text-xs bg-slate-100/50">
-                      <div>{period.name}</div>
-                      <div className="text-[10px] text-slate-400">{period.time}</div>
+                    <td className="border-r border-b border-slate-100 p-1 md:p-2 font-medium text-slate-500 text-xs bg-slate-100/50">
+                      <div className="whitespace-nowrap">{period.name}</div>
+                      <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 hidden sm:block">{period.time}</div>
                     </td>
-                    <td colSpan={5} className="border-b p-2 text-slate-400 tracking-widest text-xs">休息時間</td>
+                    <td colSpan={5} className="border-b border-slate-100 p-1 md:p-2 text-slate-400 tracking-widest text-xs">休息時間</td>
                   </tr>
                 );
               }
 
               return (
-                <tr key={period.id} className="hover:bg-slate-50/50 transition">
-                  <td className="border-r border-b p-2 bg-slate-50/80 text-xs font-medium text-slate-600">
-                    <div>{period.name}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{period.time}</div>
+                <tr key={period.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="border-r border-b border-slate-100 p-1 md:p-2 bg-slate-50/80 text-[11px] md:text-xs font-medium text-slate-600">
+                    <div className="whitespace-nowrap">{period.name}</div>
+                    <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 hidden sm:block">{period.time}</div>
                   </td>
                   
                   {DAYS.map((_, dayIdx) => {
@@ -1703,10 +1703,10 @@ export default function App() {
                     if (isEditing && viewMode === 'class' && userRole === 'admin') {
                       const tIndex = dayIdx * 100 + periodIdx + 1; 
                       return (
-                        <td key={dayIdx} className="border-b border-l border-gray-100 p-1 relative h-20 bg-blue-50/20">
+                        <td key={dayIdx} className="border-b border-l border-slate-100 p-1 relative h-16 md:h-20 bg-indigo-50/30">
                           <input
                             type="text" tabIndex={tIndex}
-                            className="w-full h-full p-2 text-center text-sm font-bold border-2 border-dashed border-gray-300 focus:border-solid focus:border-blue-500 focus:outline-none focus:bg-yellow-50 rounded-xl text-blue-800 transition-all placeholder:text-gray-300"
+                            className="w-full h-full p-1 md:p-2 text-center text-xs md:text-sm font-bold border-2 border-dashed border-slate-300 focus:border-solid focus:border-indigo-500 focus:outline-none focus:bg-white rounded-lg md:rounded-xl text-indigo-900 transition-all placeholder:text-slate-300"
                             placeholder="例: 國文 溫盛傑"
                             value={editData[`${dayNum}_${period.id}`] !== undefined ? editData[`${dayNum}_${period.id}`] : ''}
                             onChange={(e) => setEditData({...editData, [`${dayNum}_${period.id}`]: e.target.value})}
@@ -1729,7 +1729,7 @@ export default function App() {
                     const canInitiateRequest = isMyOwnSchedule || isAdmin;
 
                     return (
-                      <td key={dayIdx} className="border-b border-l border-gray-100 p-2 relative h-20 group">
+                      <td key={dayIdx} className="border-b border-l border-slate-100 p-1 md:p-2 relative h-16 md:h-20 group">
                         {lesson ? (
                           <div 
                             onClick={(e) => { 
@@ -1737,43 +1737,46 @@ export default function App() {
                                 setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
                               }
                             }}
-                            className={`h-full flex flex-col items-center justify-center rounded-xl p-2 
-                              ${period.isTutor ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'} 
-                              shadow-xs relative transition-all group-hover:shadow-md
-                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-indigo-100 hover:border-indigo-300 ring-2 ring-transparent hover:ring-indigo-200' : ''}
+                            className={`h-full flex flex-col items-center justify-center rounded-lg md:rounded-xl p-1 md:p-2 
+                              ${period.isTutor ? 'bg-amber-50/80 border border-amber-200' : 'bg-white border border-slate-200'} 
+                              shadow-sm relative transition-all group-hover:shadow-md
+                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 ring-2 ring-transparent hover:ring-indigo-100' : ''}
                             `}
                           >
                             {viewMode === 'class' ? (
                               <>
-                                <div className="font-bold text-blue-900 text-sm mb-1 relative z-10">{lesson.subject}</div>
+                                <div className="font-bold text-slate-800 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight text-center">{lesson.subject}</div>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
-                                  className="text-xs bg-white text-blue-700 px-2 py-0.5 rounded shadow-xs hover:bg-blue-600 hover:text-white transition flex items-center gap-1 hover:underline relative z-10"
+                                  className="text-[10px] md:text-xs bg-slate-50/80 md:bg-slate-100 text-slate-600 px-1 md:px-2 py-0.5 rounded md:rounded-md hover:bg-white hover:text-indigo-600 transition flex items-center justify-center gap-0.5 md:gap-1 hover:shadow-sm relative z-10 w-full truncate border border-transparent hover:border-slate-200"
+                                  title={`點擊查看 ${teacherName} 老師課表`}
                                 >
-                                  <User className="w-3 h-3" /> {teacherName}
+                                  <User className="w-2.5 h-2.5 md:w-3 md:h-3 hidden md:block shrink-0" /> 
+                                  <span className="truncate">{teacherName}</span>
                                 </button>
                               </>
                             ) : (
                               <>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
-                                  className="font-bold text-blue-900 text-sm mb-1 hover:underline cursor-pointer relative z-10"
+                                  className="font-bold text-slate-800 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:text-indigo-600 transition-colors cursor-pointer relative z-10 leading-tight text-center"
+                                  title={`點擊查看 ${className} 課表`}
                                 >
                                   {className}
                                 </button>
-                                <div className="text-xs text-blue-700 relative z-10">{lesson.subject}</div>
+                                <div className="text-[10px] md:text-xs text-slate-500 relative z-10 leading-tight truncate">{lesson.subject}</div>
                               </>
                             )}
                             
                             {(canInitiateRequest && !isEditing) && (
-                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/90' : 'bg-indigo-600/90'} text-white rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0`}>
-                                <span className="text-sm mb-0.5">✨</span>
-                                <span className="text-center leading-tight px-1">{isAdmin ? '管理員代為申請' : '點擊空白處申請調代'}</span>
+                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/95' : 'bg-indigo-600/95'} text-white rounded-lg md:rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-20`}>
+                                <span className="text-sm md:text-base mb-0.5 hidden md:block">✨</span>
+                                <span className="text-center leading-tight px-1 text-[10px] md:text-xs">{isAdmin ? '管理員代申請' : '點擊申請調代'}</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="h-full flex items-center justify-center text-gray-300 text-xs">-</div>
+                          <div className="h-full flex items-center justify-center text-slate-200 text-xs">-</div>
                         )}
                       </td>
                     );
@@ -2048,6 +2051,12 @@ export default function App() {
                   )
                 )}
               </div>
+              
+              <div className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1.5 md:hidden px-1">
+                <Info className="w-3.5 h-3.5 text-blue-500"/>
+                <span className="leading-tight">手機版提示：若課表較大，可雙指縮放或左右滑動查看完整課表</span>
+              </div>
+              
               {renderSchedule()}
             </>
           )}
