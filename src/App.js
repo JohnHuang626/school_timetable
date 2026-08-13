@@ -2317,7 +2317,7 @@ export default function App() {
             <input 
               type="file" 
               accept=".csv"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 
@@ -2328,19 +2328,35 @@ export default function App() {
                 }
                 
                 showMessage('success', '🔄 正在讀取並準備寫入雲端 (請勿關閉網頁)...');
-                const reader = new FileReader();
-                reader.onload = async (evt) => {
-                  const text = evt.target.result;
+                
+                // 建立一個讀取檔案的 Promise 函式，方便我們切換編碼
+                const readFileAs = (f, encoding) => new Promise((resolve) => {
+                  const r = new FileReader();
+                  r.onload = evt => resolve(evt.target.result);
+                  r.readAsText(f, encoding);
+                });
+
+                try {
+                  // 1. 優先以標準 UTF-8 讀取
+                  let text = await readFileAs(file, 'utf-8');
                   
-                  if (text.includes('\x00') || text.includes('')) {
-                     showMessage('error', '❌ 檔案內容包含亂碼或二進位資料。請確認檔案是標準的 CSV 格式。');
+                  // 2. 如果發現 UTF-8 解析出來有預設的亂碼替換字元 ()，代表這極有可能是台灣 Excel 預設存出的 Big5 編碼檔案
+                  if (text.includes('')) {
+                    console.log("偵測到可能的 Big5 編碼，系統正在自動切換解碼器...");
+                    text = await readFileAs(file, 'big5');
+                  }
+                  
+                  // 3. 如果檔案內含有 Null byte (二進位空字元)，這絕對不是純文字檔 (通常是使用者直接把 .xlsx 改名成 .csv)
+                  if (text.includes('\x00')) {
+                     showMessage('error', '❌ 匯入失敗：這似乎是 Excel 檔 (.xlsx) 直接修改副檔名造成的。請在 Excel 中打開該檔案，並點選「另存新檔 -> CSV (逗號分隔)」來產生標準檔案。');
                      setShowImportModal(false);
+                     e.target.value = '';
                      return;
                   }
                   
                   const lines = text.split('\n').filter(line => line.trim() !== '');
                   if (lines.length < 2) {
-                    showMessage('error', '❌ 檔案內容空白或格式不符');
+                    showMessage('error', '❌ 檔案內容空白或格式不符 (至少需要包含標題列與一筆資料)');
                     return;
                   }
                   
@@ -2362,23 +2378,16 @@ export default function App() {
                     const tName = tNameRaw.trim();
                     if (!cName || !tName || !dStr || !pStr) continue;
 
-                    // Enhanced filtering for invalid teacher names like "701 (1)", "902(2)", pure numbers, etc.
+                    // 強化過濾異常教師名稱 (例如：純數字、班級代碼+括號、單純標點符號)
                     const isInvalidTeacherName = (name) => {
-                      // 1. Check for pure numbers or pure numbers with whitespace
-                      if (/^\s*\d+\s*$/.test(name)) return true;
-                      
-                      // 2. Check for patterns like "701 (1)", "902(2)", "803-1" (common class notations mistakenly in teacher column)
-                      // This regex matches: start of string -> 2-4 digits -> optional whitespace -> (parentheses with numbers) OR (hyphen with numbers) -> end of string
-                      if (/^\d{2,4}\s*(?:\(\d+\)|-\d+)$/.test(name)) return true;
-
-                      // 3. Optional: Filter names that are just a single character and are not standard Chinese surnames (might be too aggressive depending on actual data, so commented out by default, but good to keep in mind)
-                      // if (name.length === 1 && !/[\u4e00-\u9fa5]/.test(name)) return true;
-
+                      if (/^\s*\d+\s*$/.test(name)) return true; // 純數字
+                      if (/^\d{2,4}\s*(?:\(\d+\)|-\d+)$/.test(name)) return true; // 類似 "701 (1)", "902-2"
+                      if (/^[^\u4e00-\u9fa5a-zA-Z]+$/.test(name)) return true; // 完全沒有中文或英文字母 (全是符號)
                       return false;
                     };
 
                     if (isInvalidTeacherName(tName)) {
-                      console.warn(`Skipping row ${i+1}: Detected invalid teacher name - [${tName}]`);
+                      console.warn(`已自動跳過異常教師名稱資料列 - [${tName}]`);
                       skippedCount++;
                       continue; 
                     }
@@ -2414,7 +2423,6 @@ export default function App() {
                   }
                   
                   if (parsedLessons.length > 0) {
-                     try {
                         const batches = [];
                         let currentBatch = writeBatch(db);
                         let opCount = 0;
@@ -2439,23 +2447,23 @@ export default function App() {
                         
                         await Promise.all(batches);
                         setShowImportModal(false);
-                        const skipMsg = skippedCount > 0 ? ` (已自動過濾 ${skippedCount} 筆異常教師資料)` : '';
+                        const skipMsg = skippedCount > 0 ? ` (已自動過濾 ${skippedCount} 筆異常格式)` : '';
                         showMessage('success', `✅ 成功匯入 ${parsedLessons.length} 筆課表至雲端！${skipMsg}`);
-                     } catch(err) {
-                        console.error("Batch Import Error:", err);
-                        if (err.code === 'permission-denied') {
-                          showMessage('error', '❌ 寫入失敗：權限不足，請檢查 Firebase Security Rules！');
-                        } else if (err.code === 'resource-exhausted') {
-                          showMessage('error', '❌ 寫入失敗：超過 Firebase 每日免費寫入配額！');
-                        } else {
-                          showMessage('error', '❌ 寫入雲端失敗：' + err.message);
-                        }
-                     }
                   } else {
-                     showMessage('error', '❌ 解析失敗，請確認格式');
+                     showMessage('error', '❌ 解析失敗，請確認上傳的檔案包含正確的排課資料');
                   }
-                };
-                reader.readAsText(file);
+                } catch(err) {
+                    console.error("Batch Import Error:", err);
+                    if (err.code === 'permission-denied') {
+                      showMessage('error', '❌ 寫入失敗：權限不足，請檢查 Firebase Security Rules！');
+                    } else if (err.code === 'resource-exhausted') {
+                      showMessage('error', '❌ 寫入失敗：超過 Firebase 每日免費寫入配額！');
+                    } else {
+                      showMessage('error', '❌ 處理檔案時發生錯誤：' + err.message);
+                    }
+                } finally {
+                  e.target.value = ''; // 確保下次選同一個檔案也能觸發 onChange
+                }
               }}
               className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer"
             />
