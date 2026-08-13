@@ -1738,20 +1738,20 @@ export default function App() {
                               }
                             }}
                             className={`h-full flex flex-col items-center justify-center rounded-lg md:rounded-xl p-1 md:p-2 
-                              ${period.isTutor ? 'bg-amber-50/80 border border-amber-200' : 'bg-white border border-slate-200'} 
+                              ${period.isTutor ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-blue-200'} 
                               shadow-sm relative transition-all group-hover:shadow-md
-                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 ring-2 ring-transparent hover:ring-indigo-100' : ''}
+                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-300 ring-2 ring-transparent hover:ring-blue-100' : ''}
                             `}
                           >
                             {viewMode === 'class' ? (
                               <>
-                                <div className="font-bold text-slate-800 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight text-center">{lesson.subject}</div>
+                                <div className="font-bold text-blue-900 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight text-center tracking-wide">{lesson.subject}</div>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
-                                  className="text-[10px] md:text-xs bg-slate-50/80 md:bg-slate-100 text-slate-600 px-1 md:px-2 py-0.5 rounded md:rounded-md hover:bg-white hover:text-indigo-600 transition flex items-center justify-center gap-0.5 md:gap-1 hover:shadow-sm relative z-10 w-full truncate border border-transparent hover:border-slate-200"
+                                  className="text-[10px] md:text-xs text-blue-600 hover:text-blue-800 transition flex items-center justify-center gap-0.5 md:gap-1 relative z-10 w-full truncate font-medium"
                                   title={`點擊查看 ${teacherName} 老師課表`}
                                 >
-                                  <User className="w-2.5 h-2.5 md:w-3 md:h-3 hidden md:block shrink-0" /> 
+                                  <User className="w-2.5 h-2.5 md:w-3 md:h-3 shrink-0" /> 
                                   <span className="truncate">{teacherName}</span>
                                 </button>
                               </>
@@ -1759,17 +1759,19 @@ export default function App() {
                               <>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
-                                  className="font-bold text-slate-800 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:text-indigo-600 transition-colors cursor-pointer relative z-10 leading-tight text-center"
+                                  className="font-bold text-blue-900 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:text-blue-700 transition-colors cursor-pointer relative z-10 leading-tight text-center tracking-wide"
                                   title={`點擊查看 ${className} 課表`}
                                 >
                                   {className}
                                 </button>
-                                <div className="text-[10px] md:text-xs text-slate-500 relative z-10 leading-tight truncate">{lesson.subject}</div>
+                                <div className="text-[10px] md:text-xs text-blue-600 relative z-10 leading-tight truncate font-medium flex items-center justify-center gap-0.5">
+                                  {lesson.subject}
+                                </div>
                               </>
                             )}
                             
                             {(canInitiateRequest && !isEditing) && (
-                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/95' : 'bg-indigo-600/95'} text-white rounded-lg md:rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-20`}>
+                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/95' : 'bg-blue-600/95'} text-white rounded-lg md:rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-20`}>
                                 <span className="text-sm md:text-base mb-0.5 hidden md:block">✨</span>
                                 <span className="text-center leading-tight px-1 text-[10px] md:text-xs">{isAdmin ? '管理員代申請' : '點擊申請調代'}</span>
                               </div>
