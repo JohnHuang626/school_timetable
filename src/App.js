@@ -2351,6 +2351,8 @@ export default function App() {
                   classes.forEach(c => newClassesMap.set(c.name.trim(), c));
                   teachers.forEach(t => newTeachersMap.set(t.name.trim(), t));
                   
+                  let skippedCount = 0;
+
                   for (let i = 1; i < lines.length; i++) {
                     const row = lines[i].split(',').map(item => item.trim());
                     if (row.length < 5) continue;
@@ -2359,6 +2361,27 @@ export default function App() {
                     const cName = cNameRaw.trim();
                     const tName = tNameRaw.trim();
                     if (!cName || !tName || !dStr || !pStr) continue;
+
+                    // Enhanced filtering for invalid teacher names like "701 (1)", "902(2)", pure numbers, etc.
+                    const isInvalidTeacherName = (name) => {
+                      // 1. Check for pure numbers or pure numbers with whitespace
+                      if (/^\s*\d+\s*$/.test(name)) return true;
+                      
+                      // 2. Check for patterns like "701 (1)", "902(2)", "803-1" (common class notations mistakenly in teacher column)
+                      // This regex matches: start of string -> 2-4 digits -> optional whitespace -> (parentheses with numbers) OR (hyphen with numbers) -> end of string
+                      if (/^\d{2,4}\s*(?:\(\d+\)|-\d+)$/.test(name)) return true;
+
+                      // 3. Optional: Filter names that are just a single character and are not standard Chinese surnames (might be too aggressive depending on actual data, so commented out by default, but good to keep in mind)
+                      // if (name.length === 1 && !/[\u4e00-\u9fa5]/.test(name)) return true;
+
+                      return false;
+                    };
+
+                    if (isInvalidTeacherName(tName)) {
+                      console.warn(`Skipping row ${i+1}: Detected invalid teacher name - [${tName}]`);
+                      skippedCount++;
+                      continue; 
+                    }
 
                     let cId = cName.replace(/\D/g, ''); 
                     if(!cId) cId = `C_${Math.floor(Math.random()*1000)}`;
@@ -2416,7 +2439,8 @@ export default function App() {
                         
                         await Promise.all(batches);
                         setShowImportModal(false);
-                        showMessage('success', `✅ 成功匯入 ${parsedLessons.length} 筆課表至雲端！`);
+                        const skipMsg = skippedCount > 0 ? ` (已自動過濾 ${skippedCount} 筆異常教師資料)` : '';
+                        showMessage('success', `✅ 成功匯入 ${parsedLessons.length} 筆課表至雲端！${skipMsg}`);
                      } catch(err) {
                         console.error("Batch Import Error:", err);
                         if (err.code === 'permission-denied') {
