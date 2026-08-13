@@ -127,7 +127,6 @@ export default function App() {
   const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [showDeleteAllTeachersModal, setShowDeleteAllTeachersModal] = useState(false);
   const [showDeduplicateModal, setShowDeduplicateModal] = useState(false);
-  const [showPrintHintModal, setShowPrintHintModal] = useState(false);
 
   const [showFeeReportModal, setShowFeeReportModal] = useState(false);
   const [feeReportMonth, setFeeReportMonth] = useState(() => {
@@ -182,11 +181,6 @@ export default function App() {
   };
 
   const handlePrint = () => {
-    setShowPrintHintModal(true);
-  };
-
-  const executePrint = () => {
-    setShowPrintHintModal(false);
     setTimeout(() => {
       window.print();
     }, 300);
@@ -2063,44 +2057,6 @@ export default function App() {
       {}
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
-
-      {showPrintHintModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm print:hidden">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border-t-4 border-blue-600">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Printer className="w-6 h-6 text-blue-600"/> 準備列印
-              </h3>
-              <button onClick={() => setShowPrintHintModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <X className="w-5 h-5"/>
-              </button>
-            </div>
-            
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
-              <h4 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-1.5">
-                <Info className="w-4 h-4"/> 如何隱藏列印時的網址與日期？
-              </h4>
-              <p className="text-sm text-slate-700 mb-3 leading-relaxed">
-                系統已為您最佳化排版。若預覽畫面邊緣仍出現<strong>網址</strong>或<strong>頁面標題</strong>，請在即將彈出的列印視窗中進行以下設定：
-              </p>
-              <ul className="text-sm text-slate-700 space-y-2 list-disc pl-5 font-medium">
-                <li>點擊 <strong>「更多設定 (More settings)」</strong></li>
-                <li><strong className="text-red-600">取消勾選</strong> 「頁首和頁尾 (Headers and footers)」選項。</li>
-                <li>確保邊界 (Margins) 設為「預設 (Default)」或「無 (None)」。</li>
-              </ul>
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowPrintHintModal(false)} className="px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
-                取消列印
-              </button>
-              <button onClick={executePrint} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2 transition-colors">
-                <Check className="w-4 h-4"/> 我知道了，繼續列印
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showPwdModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
