@@ -515,6 +515,45 @@ export default function App() {
     }
   };
 
+  const executeDeleteGarbledClasses = async () => {
+    try {
+      const batches = [];
+      let currentBatch = writeBatch(db);
+      let opCount = 0;
+
+      const pushToDelete = (ref) => {
+        currentBatch.delete(ref);
+        opCount++;
+        if (opCount >= 450) {
+          batches.push(currentBatch.commit());
+          currentBatch = writeBatch(db);
+          opCount = 0;
+        }
+      };
+
+      const garbledClasses = classes.filter(c => c.name.length > 30 || c.name.includes('') || c.name.includes('?'));
+      const garbledClassIds = garbledClasses.map(c => c.id);
+      garbledClasses.forEach(c => pushToDelete(doc(db, 'classes', c.id)));
+      
+      const garbledTeachers = teachers.filter(t => t.name.length > 30 || t.name.includes('') || t.name.includes('?'));
+      const garbledTeacherIds = garbledTeachers.map(t => t.id);
+      garbledTeachers.forEach(t => pushToDelete(doc(db, 'teachers', t.id)));
+
+      const garbledLessons = lessons.filter(l => garbledClassIds.includes(l.classId) || garbledTeacherIds.includes(l.teacherId));
+      garbledLessons.forEach(l => pushToDelete(doc(db, 'lessons', l.id)));
+
+      if (opCount > 0) batches.push(currentBatch.commit());
+      await Promise.all(batches);
+
+      if (garbledClassIds.includes(selectedClass)) setSelectedClass('');
+      if (garbledTeacherIds.includes(selectedTeacher)) setSelectedTeacher('');
+
+      showMessage('success', `🧹 已成功清除 ${garbledClasses.length} 個亂碼班級與 ${garbledTeachers.length} 個亂碼教師！`);
+    } catch (e) {
+      showMessage('error', '❌ 清除失敗：' + e.message);
+    }
+  };
+
   const handleAddTeacher = async () => {
     if (!newTeacherName) return;
     const newId = `T${Date.now()}_${Math.floor(Math.random()*1000)}`;
@@ -1899,12 +1938,12 @@ export default function App() {
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="font-bold text-slate-700">選擇檢視{viewMode === 'class' ? '班級' : '教師'}：</span>
                   {viewMode === 'class' ? (
-                    <div className="flex items-center gap-2">
-                      <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsEditing(false);}} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none">
-                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsEditing(false);}} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] sm:max-w-xs truncate">
+                        {classes.map(c => <option key={c.id} value={c.id}>{c.name.length > 30 ? c.name.substring(0, 30) + '...' : c.name}</option>)}
                       </select>
                       {userRole === 'admin' && (
-                        <div className="flex items-center gap-1 ml-2">
+                        <div className="flex items-center gap-1 ml-2 flex-wrap">
                           <button onClick={() => setShowAddClassModal(true)} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-bold flex items-center gap-1">
                             <Plus className="w-4 h-4"/> 新增
                           </button>
@@ -1918,6 +1957,11 @@ export default function App() {
                               <AlertTriangle className="w-4 h-4"/> 刪除所有班級
                             </button>
                           )}
+                          {classes.some(c => c.name.length > 30 || c.name.includes('') || c.name.includes('?')) && (
+                            <button onClick={executeDeleteGarbledClasses} className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-sm font-bold flex items-center gap-1 ml-2 shadow-sm">
+                              <Eraser className="w-4 h-4"/> 清除亂碼資料
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1928,8 +1972,8 @@ export default function App() {
                         <option value="subject">依科目</option>
                         <option value="name">依姓名筆畫</option>
                       </select>
-                      <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none">
-                        {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
+                      <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 rounded-lg px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none max-w-[150px] sm:max-w-xs truncate">
+                        {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name.length > 20 ? t.name.substring(0, 20) + '...' : t.name} ({t.displaySubject?.length > 10 ? t.displaySubject.substring(0, 10) + '...' : t.displaySubject})</option>)}
                       </select>
 
                       {userRole === 'admin' && (
@@ -2276,10 +2320,24 @@ export default function App() {
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                  showMessage('error', '❌ 匯入失敗：請上傳 .csv 逗號分隔檔，不支援 Excel (.xls或.xlsx) 檔案');
+                  e.target.value = '';
+                  return;
+                }
+                
                 showMessage('success', '🔄 正在讀取並準備寫入雲端 (請勿關閉網頁)...');
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                   const text = evt.target.result;
+                  
+                  if (text.includes('\x00') || text.includes('')) {
+                     showMessage('error', '❌ 檔案內容包含亂碼或二進位資料。請確認檔案是標準的 CSV 格式。');
+                     setShowImportModal(false);
+                     return;
+                  }
+                  
                   const lines = text.split('\n').filter(line => line.trim() !== '');
                   if (lines.length < 2) {
                     showMessage('error', '❌ 檔案內容空白或格式不符');
