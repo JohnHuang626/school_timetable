@@ -47,7 +47,16 @@ export default function App() {
     // 1. 設定瀏覽器分頁標題
     document.title = "嘉新課表與調代課系統";
 
-    // 2. 動態產生並注入 Favicon (學校圖示)
+    // 2. 加入 viewport 設定，防止手機版將整個網頁強制縮小，讓使用者能維持正常字體大小並左右滑動
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.name = "viewport";
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.content = "width=device-width, initial-scale=1.0";
+
+    // 3. 動態產生並注入 Favicon (學校圖示)
     const setFavicon = () => {
       const emoji = '🏫'; // 您也可以改成 '📅' 或 '📖'
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
@@ -750,7 +759,7 @@ export default function App() {
 
   useEffect(() => {
     if (sortedTeachers.length > 0 && !selectedTeacher && sortedTeachers.some(t => t.id !== undefined)) {
-      setSelectedTeacher(sortedTeachers[0].id);
+      setSelectedTeacher('');
     }
   }, [sortedTeachers, selectedTeacher]);
 
@@ -920,7 +929,7 @@ export default function App() {
                     </div>
                   </div>
                   
-                  <div className="grid gap-6 print:gap-4">
+                  <div className="grid gap-6 print:gap-2">
                     {reportData.map((data, idx) => (
                       <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black shadow-sm print:rounded-none">
                         <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-slate-100 print:p-1.5">
@@ -1823,7 +1832,19 @@ export default function App() {
       
       <header className="bg-blue-700 text-white shadow-md sticky top-0 z-30 print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
-          <div className="flex items-center space-x-3">
+          <div 
+            className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity select-none"
+            onClick={() => {
+              setActiveTab('schedule');
+              setViewMode('class');
+              setIsEditing(false);
+              setFilterTeacherId('');
+              setFilterPrintClassId('');
+              setFilterStartDate('');
+              setFilterEndDate('');
+            }}
+            title="點擊返回首頁"
+          >
             <BookOpen className="w-8 h-8 text-blue-200" />
             <div>
               <h1 className="text-xl font-bold tracking-wide">嘉義縣立嘉新國民中學</h1>
