@@ -43,20 +43,27 @@ export default function App() {
   const [viewMode, setViewMode] = useState('class'); 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   
-  // 深色模式狀態與切換
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  // 深色模式狀態與切換 (修正 Vercel SSR Hydration 衝突問題)
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isThemeLoaded, setIsThemeLoaded] = useState(false);
+
+  useEffect(() => {
+    // 確保只在客戶端環境中讀取 localStorage 和 window
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark' || 
+      const isDark = localStorage.getItem('theme') === 'dark' || 
              (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDarkMode(isDark);
+      setIsThemeLoaded(true);
     }
-    return false;
-  });
+  }, []);
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode(prev => !prev);
   }, []);
 
   useEffect(() => {
+    if (!isThemeLoaded) return; // 確保初始狀態已經載入完畢再執行
+    
     const html = document.documentElement;
     if (isDarkMode) {
       html.classList.add('dark');
@@ -65,7 +72,7 @@ export default function App() {
       html.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
-  }, [isDarkMode]);
+  }, [isDarkMode, isThemeLoaded]);
   
   useEffect(() => {
     document.title = "嘉新課表與調代課系統";
