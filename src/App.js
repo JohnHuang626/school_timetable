@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun } from 'lucide-react';
+import { Search, User, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
@@ -42,8 +42,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [viewMode, setViewMode] = useState('class'); 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  
+  // 深色模式狀態與切換
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check initial dark mode preference on load
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
              (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -51,7 +52,10 @@ export default function App() {
     return false;
   });
 
-  // Apply dark mode class to html element
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => !prev);
+  }, []);
+
   useEffect(() => {
     const html = document.documentElement;
     if (isDarkMode) {
@@ -62,16 +66,9 @@ export default function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
-
-  const toggleDarkMode = useCallback(() => {
-    setIsDarkMode(prev => !prev);
-  }, []);
   
   useEffect(() => {
-    // 1. 設定瀏覽器分頁標題
     document.title = "嘉新課表與調代課系統";
-
-    // 2. 加入 viewport 設定，防止手機版將整個網頁強制縮小，讓使用者能維持正常字體大小並左右滑動
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
@@ -80,7 +77,6 @@ export default function App() {
     }
     viewportMeta.content = "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes";
 
-    // 3. 動態產生並注入 Favicon (學校圖示)
     const setFavicon = () => {
       const emoji = '🏫';
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
@@ -96,23 +92,6 @@ export default function App() {
     };
     
     setFavicon();
-    
-    // Inject Tailwind v4 custom dark mode variant if needed by the current environment setup
-    // Since we are running in an environment where we can't easily modify the global css file to add @custom-variant dark
-    // We add a fallback style tag to handle dark class correctly for basic tailwind classes
-    const styleId = 'tailwind-dark-mode-fallback';
-    if (!document.getElementById(styleId)) {
-        const style = document.createElement('style');
-        style.id = styleId;
-        // This is a simplified fallback if the environment doesn't natively support standard Tailwind dark: prefix out of the box without the @custom-variant
-        style.innerHTML = `
-          /* Ensure our specific custom colors update */
-          .dark {
-             color-scheme: dark;
-          }
-        `;
-        document.head.appendChild(style);
-    }
   }, []);
 
   const [classes, setClasses] = useState([]);
@@ -1777,10 +1756,10 @@ export default function App() {
                                 setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
                               }
                             }}
-                            className={`h-full flex flex-col items-center justify-center rounded-lg md:rounded-xl p-1 md:p-2 
+                            className={`h-full flex flex-col items-center justify-center rounded-lg md:rounded-xl p-1 md:p-2 border
                               ${period.isTutor 
-                                ? 'bg-amber-100/60 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50' 
-                                : 'bg-blue-100/50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700'
+                                ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700/50' 
+                                : 'bg-blue-50/60 border-blue-200 dark:bg-blue-900/20 dark:border-slate-700'
                               } 
                               shadow-sm relative transition-all group-hover:shadow-md
                               ${canInitiateRequest && !isEditing 
@@ -1791,10 +1770,10 @@ export default function App() {
                           >
                             {viewMode === 'class' ? (
                               <>
-                                <div className="font-bold text-blue-900 dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight text-center tracking-wide">{lesson.subject}</div>
+                                <div className="font-bold text-blue-900 dark:text-blue-300 text-[11px] md:text-sm mb-0.5 relative z-10 leading-tight text-center tracking-wide">{lesson.subject}</div>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
-                                  className="text-[10px] md:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition flex items-center justify-center gap-0.5 md:gap-1 relative z-10 w-full truncate font-medium bg-transparent border-none"
+                                  className="text-[10px] md:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition flex items-center justify-center gap-0.5 relative z-10 w-full truncate font-bold bg-transparent border-none"
                                   title={`點擊查看 ${teacherName} 老師課表`}
                                 >
                                   <User className="w-2.5 h-2.5 md:w-3 md:h-3 shrink-0" /> 
@@ -1805,12 +1784,12 @@ export default function App() {
                               <>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
-                                  className="font-bold text-blue-900 dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:text-blue-700 dark:hover:text-blue-200 transition-colors cursor-pointer relative z-10 leading-tight text-center tracking-wide bg-transparent border-none"
+                                  className="font-bold text-blue-900 dark:text-blue-300 text-[11px] md:text-sm mb-0.5 hover:text-blue-700 dark:hover:text-blue-200 transition-colors cursor-pointer relative z-10 leading-tight text-center tracking-wide bg-transparent border-none"
                                   title={`點擊查看 ${className} 課表`}
                                 >
                                   {className}
                                 </button>
-                                <div className="text-[10px] md:text-xs text-blue-600 dark:text-blue-400 relative z-10 leading-tight truncate font-medium flex items-center justify-center gap-0.5">
+                                <div className="text-[10px] md:text-xs font-bold text-blue-600 dark:text-blue-400 relative z-10 leading-tight truncate flex items-center justify-center gap-0.5">
                                   {lesson.subject}
                                 </div>
                               </>
@@ -1849,14 +1828,11 @@ export default function App() {
 
   return (
     <div className={`min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden transition-colors`}>
-      {/* 專屬列印樣式：強制隱藏瀏覽器預設的頁首(日期)與頁尾(網址)，並解除所有高度限制防止空白頁 */}
+      {/* 專屬列印樣式 */}
       <style>
         {`
           @media print {
-            @page { 
-              margin: 0 !important; 
-              size: auto;
-            }
+            @page { margin: 0 !important; size: auto; }
             html, body { 
               margin: 0 !important; 
               padding: 10mm !important; 
@@ -1866,10 +1842,7 @@ export default function App() {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .min-h-screen {
-              min-height: 0 !important;
-              height: auto !important;
-            }
+            .min-h-screen { min-height: 0 !important; height: auto !important; }
           }
         `}
       </style>
@@ -2002,7 +1975,6 @@ export default function App() {
           </div>
         )}
         
-        {}
         {(activeTab === 'requests' || activeTab === 'archive' || activeTab === 'public_requests') ? (
           renderRequestsView()
         ) : (
