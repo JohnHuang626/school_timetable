@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
@@ -42,19 +42,42 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [viewMode, setViewMode] = useState('class'); 
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check initial dark mode preference on load
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') === 'dark' || 
+             (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
+
+  // Apply dark mode class to html element
+  useEffect(() => {
+    const html = document.documentElement;
+    if (isDarkMode) {
+      html.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      html.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => !prev);
+  }, []);
   
   useEffect(() => {
     // 1. 設定瀏覽器分頁標題
     document.title = "嘉新課表與調代課系統";
 
     // 2. 加入 viewport 設定，防止手機版將整個網頁強制縮小，讓使用者能維持正常字體大小並左右滑動
-    // 移除 user-scalable=no 讓使用者可以自由雙指縮放
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
+      viewportMeta.name = "viewport";
       document.head.appendChild(viewportMeta);
     }
-    viewportMeta.name = "viewport";
     viewportMeta.content = "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes";
 
     // 3. 動態產生並注入 Favicon (學校圖示)
@@ -73,6 +96,23 @@ export default function App() {
     };
     
     setFavicon();
+    
+    // Inject Tailwind v4 custom dark mode variant if needed by the current environment setup
+    // Since we are running in an environment where we can't easily modify the global css file to add @custom-variant dark
+    // We add a fallback style tag to handle dark class correctly for basic tailwind classes
+    const styleId = 'tailwind-dark-mode-fallback';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        // This is a simplified fallback if the environment doesn't natively support standard Tailwind dark: prefix out of the box without the @custom-variant
+        style.innerHTML = `
+          /* Ensure our specific custom colors update */
+          .dark {
+             color-scheme: dark;
+          }
+        `;
+        document.head.appendChild(style);
+    }
   }, []);
 
   const [classes, setClasses] = useState([]);
@@ -879,73 +919,73 @@ export default function App() {
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm print:static print:block print:p-0 print:bg-white print:backdrop-blur-none print:h-auto print:min-h-0">
-        <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none print:max-h-none print:h-auto print:overflow-visible print:block print:m-0">
-          <div className="bg-indigo-700 p-4 flex justify-between items-center text-white print:hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 print:shadow-none print:border-none print:rounded-none print:w-full print:max-w-none print:max-h-none print:h-auto print:overflow-visible print:block print:m-0">
+          <div className="bg-blue-700 p-4 flex justify-between items-center text-white print:hidden">
             <h3 className="text-lg font-bold flex items-center gap-2"><Calendar className="w-5 h-5" /> 每月代課節數統計與費用結算表</h3>
-            <button onClick={() => setShowFeeReportModal(false)} className="hover:bg-indigo-800 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
+            <button onClick={() => setShowFeeReportModal(false)} className="hover:bg-blue-800 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
           </div>
           
-          <div className="p-6 flex-1 overflow-y-auto bg-slate-50 print:p-0 print:overflow-visible print:bg-white print:block print:flex-none">
+          <div className="p-6 flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 print:p-0 print:overflow-visible print:bg-white print:block print:flex-none">
             <div className="flex flex-wrap justify-between items-end mb-6 print:hidden gap-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">請選擇結算月份</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">請選擇結算月份</label>
                 <input 
                   type="month" 
                   value={feeReportMonth} 
                   onChange={e => setFeeReportMonth(e.target.value)} 
-                  className="border border-slate-300 rounded-lg p-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white cursor-pointer"
+                  className="border border-slate-300 dark:border-slate-700 rounded-lg p-2 text-sm font-bold focus:ring-2 focus:ring-blue-500 shadow-sm bg-white dark:bg-slate-800 dark:text-white cursor-pointer"
                 />
               </div>
-              <button onClick={handlePrint} className="px-5 py-2.5 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-2 shadow-sm transition-colors">
+              <button onClick={handlePrint} className="px-5 py-2.5 bg-slate-800 dark:bg-slate-700 text-white rounded-lg text-sm font-bold hover:bg-slate-700 dark:hover:bg-slate-600 flex items-center gap-2 shadow-sm transition-colors">
                 <Printer className="w-4 h-4"/> 列印此報表
               </button>
             </div>
             
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0">
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm print:border-none print:shadow-none print:p-0">
               <div className="text-center mb-6 hidden print:block border-b-2 border-black pb-4">
-                <h2 className="text-2xl font-bold">嘉新國中 {feeReportMonth.split('-')[0]}年{feeReportMonth.split('-')[1]}月 代課節數統計表</h2>
-                <p className="text-sm mt-2">列印日期：{new Date().toLocaleDateString()}</p>
+                <h2 className="text-2xl font-bold dark:text-white">嘉新國中 {feeReportMonth.split('-')[0]}年{feeReportMonth.split('-')[1]}月 代課節數統計表</h2>
+                <p className="text-sm mt-2 dark:text-gray-300">列印日期：{new Date().toLocaleDateString()}</p>
               </div>
               
               {reportData.length === 0 ? (
-                <div className="text-center py-16 text-slate-400 font-bold bg-slate-50 rounded-lg border border-dashed border-slate-300 print:hidden">
+                <div className="text-center py-16 text-slate-400 font-bold bg-slate-50 dark:bg-slate-800 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 print:hidden">
                   該月份目前沒有任何已核准的請假代課紀錄。
                 </div>
               ) : (
                 <>
-                  <div className="mb-6 text-base font-bold text-indigo-900 bg-indigo-50 p-4 rounded-lg border border-indigo-200 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none print:mb-4 print:p-2">
+                  <div className="mb-6 text-base font-bold text-blue-900 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm flex items-center justify-between print:border-black print:bg-white print:shadow-none print:mb-4 print:p-2">
                     <span>本月全校代課總計與鐘點費結算</span>
                     <div className="flex items-center gap-4">
                       <span className="text-2xl print:text-lg">{totalFees} <span className="text-sm font-medium">節</span></span>
-                      <span className="text-indigo-300 print:text-slate-400">|</span>
-                      <span className="text-2xl print:text-lg text-red-600 print:text-black font-extrabold">{(totalFees * 455).toLocaleString()} <span className="text-sm font-bold text-indigo-900 print:text-black">元</span></span>
+                      <span className="text-blue-300 dark:text-blue-700 print:text-slate-400">|</span>
+                      <span className="text-2xl print:text-lg text-red-600 dark:text-red-400 print:text-black font-extrabold">{(totalFees * 455).toLocaleString()} <span className="text-sm font-bold text-blue-900 dark:text-blue-200 print:text-black">元</span></span>
                     </div>
                   </div>
                   
                   <div className="grid gap-6 print:gap-2">
                     {reportData.map((data, idx) => (
-                      <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden print:border-black shadow-sm print:rounded-none">
-                        <div className="bg-slate-100 p-3.5 font-bold text-slate-800 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 print:bg-transparent print:p-1">
+                      <div key={idx} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden print:border-black shadow-sm print:rounded-none">
+                        <div className="bg-slate-100 dark:bg-slate-800 p-3.5 font-bold text-slate-800 dark:text-slate-200 flex flex-wrap justify-between items-center gap-3 border-b border-slate-200 dark:border-slate-700 print:bg-transparent print:p-1">
                           <span className="text-base flex items-center gap-2 print:text-sm">
-                            <User className="w-4 h-4 text-slate-500 print:hidden"/>
-                            代課教師：<span className="text-indigo-700 print:text-black text-lg print:text-base">{data.teacher?.name || '未知'}</span>
+                            <User className="w-4 h-4 text-slate-500 dark:text-slate-400 print:hidden"/>
+                            代課教師：<span className="text-blue-700 dark:text-blue-400 print:text-black text-lg print:text-base">{data.teacher?.name || '未知'}</span>
                           </span>
                           <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                            <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-transparent print:border print:border-black shadow-sm flex items-center gap-2 print:px-2 print:py-0 print:text-[11px] print:rounded-sm">
+                            <div className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-1.5 rounded-full text-sm font-bold print:text-black print:bg-transparent print:border print:border-black shadow-sm flex items-center gap-2 print:px-2 print:py-0 print:text-[11px] print:rounded-sm">
                               <span>本月共代 <span className="text-lg print:text-xs mx-1">{data.count}</span> 節</span>
-                              <span className="w-px h-4 bg-indigo-400 print:bg-slate-400"></span>
-                              <span>共計 <span className="text-lg print:text-xs mx-1 text-amber-300 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
+                              <span className="w-px h-4 bg-blue-400 dark:bg-blue-500 print:bg-slate-400"></span>
+                              <span>共計 <span className="text-lg print:text-xs mx-1 text-amber-300 dark:text-amber-400 print:text-black">{(data.count * 455).toLocaleString()}</span> 元</span>
                             </div>
                             <div className="flex items-end gap-1 pt-1">
-                              <span className="text-slate-500 print:text-black font-bold text-sm print:text-xs mb-0.5">簽名：</span>
-                              <div className="w-32 sm:w-40 border-b-2 border-slate-300 print:border-black h-4"></div>
+                              <span className="text-slate-500 dark:text-slate-400 print:text-black font-bold text-sm print:text-xs mb-0.5">簽名：</span>
+                              <div className="w-32 sm:w-40 border-b-2 border-slate-300 dark:border-slate-600 print:border-black h-4"></div>
                             </div>
                           </div>
                         </div>
                         <div className="p-0 overflow-x-auto print:overflow-visible">
                           <table className="w-full text-sm text-left border-collapse print:text-[11px]">
                             <thead>
-                              <tr className="bg-slate-50 text-slate-600 border-b print:bg-transparent print:border-black">
+                              <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-b dark:border-slate-700 print:bg-transparent print:border-black">
                                 <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap print:p-1 print:pl-1">代課日期</th>
                                 <th className="p-3 font-semibold w-24 whitespace-nowrap print:p-1">請假老師</th>
                                 <th className="p-3 font-semibold w-20 whitespace-nowrap print:p-1">假別</th>
@@ -955,12 +995,12 @@ export default function App() {
                             </thead>
                             <tbody>
                               {data.details.sort((a,b) => a.date.localeCompare(b.date)).map((det, i) => (
-                                <tr key={i} className="border-b last:border-0 hover:bg-slate-50 print:border-b print:border-slate-300">
-                                  <td className="p-3 pl-5 text-indigo-700 font-bold whitespace-nowrap print:p-1 print:pl-1 print:text-black">{det.date}</td>
-                                  <td className="p-3 text-slate-700 font-medium print:p-1">{det.originalTeacher}</td>
-                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-1 rounded-md border border-slate-300 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0 print:text-[11px]">{det.reason}</span></td>
-                                  <td className="p-3 font-bold text-slate-800 print:p-1">{det.className}</td>
-                                  <td className="p-3 text-slate-600 font-medium print:p-1">{det.periodStr}</td>
+                                <tr key={i} className="border-b dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 print:border-b print:border-slate-300">
+                                  <td className="p-3 pl-5 text-blue-700 dark:text-blue-400 font-bold whitespace-nowrap print:p-1 print:pl-1 print:text-black">{det.date}</td>
+                                  <td className="p-3 text-slate-700 dark:text-slate-300 font-medium print:p-1">{det.originalTeacher}</td>
+                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0 print:text-[11px]">{det.reason}</span></td>
+                                  <td className="p-3 font-bold text-slate-800 dark:text-slate-200 print:p-1">{det.className}</td>
+                                  <td className="p-3 text-slate-600 dark:text-slate-400 font-medium print:p-1">{det.periodStr}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1064,7 +1104,7 @@ export default function App() {
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-lg w-full overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
           <div className="bg-blue-700 p-4 flex justify-between items-center text-white">
             <h3 className="text-lg font-bold flex items-center gap-2">
               <ArrowRightLeft className="w-5 h-5"/> 
@@ -1074,30 +1114,30 @@ export default function App() {
           </div>
           
           <div className="p-6 flex-1 overflow-y-auto space-y-4">
-            <div className="bg-blue-50 p-3 rounded-xl border border-blue-200 text-sm grid grid-cols-2 gap-2">
-              <div><span className="text-gray-500">原授課班級：</span><span className="font-bold text-blue-900">{targetClass.name}</span></div>
-              <div><span className="text-gray-500">上課科目：</span><span className="font-bold text-blue-900">{lesson.subject}</span></div>
-              <div className="col-span-2"><span className="text-gray-500">原上課時段：</span><span className="font-bold text-blue-900">{DAYS[day-1]} 第 {period} 節</span></div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-sm grid grid-cols-2 gap-2">
+              <div><span className="text-slate-500 dark:text-slate-400">原授課班級：</span><span className="font-bold text-blue-900 dark:text-blue-300">{targetClass.name}</span></div>
+              <div><span className="text-slate-500 dark:text-slate-400">上課科目：</span><span className="font-bold text-blue-900 dark:text-blue-300">{lesson.subject}</span></div>
+              <div className="col-span-2"><span className="text-slate-500 dark:text-slate-400">原上課時段：</span><span className="font-bold text-blue-900 dark:text-blue-300">{DAYS[day-1]} 第 {period} 節</span></div>
             </div>
             
-            <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
-              <button onClick={() => {setRequestType('sub'); setTargetTeacher(''); setTargetLessonId('');}} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors ${requestType === 'sub' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-200'}`}>請假找人代課</button>
-              <button onClick={() => {setRequestType('swap'); setTargetTeacher(''); setTargetLessonId('');}} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors ${requestType === 'swap' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-200'}`}>與人調課 (跨週)</button>
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button onClick={() => {setRequestType('sub'); setTargetTeacher(''); setTargetLessonId('');}} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors ${requestType === 'sub' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>請假找人代課</button>
+              <button onClick={() => {setRequestType('swap'); setTargetTeacher(''); setTargetLessonId('');}} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors ${requestType === 'swap' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>與人調課 (跨週)</button>
             </div>
 
             {requestType === 'sub' ? (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">請假事由</label>
-                  <select value={reason} onChange={e => setReason(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white font-medium focus:ring-blue-500">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">請假事由</label>
+                  <select value={reason} onChange={e => setReason(e.target.value)} className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-blue-500">
                     {['事假', '病假', '公假', '差假', '休假', '身心調適假', '喪假', '產假', '公傷假', '其他'].map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">選擇代課老師 (已優先排列同科目)</label>
-                  <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white font-medium focus:ring-blue-500">
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">選擇代課老師 (已優先排列同科目)</label>
+                  <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-blue-500">
                     <option value="">-- 請選擇代課老師 --</option>
                     {prioritizedTeachers.map(t => (
                       <option key={t.id} value={t.id}>
@@ -1107,22 +1147,22 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">代課確切日期</label>
-                  <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-blue-500"/>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">代課確切日期</label>
+                  <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm dark:bg-slate-800 dark:text-white focus:ring-blue-500"/>
                 </div>
               </>
             ) : (
               <div className="space-y-4">
-                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
-                  <label className="block text-sm font-bold text-blue-800">1. 我的調課日 (這堂課發生在哪天)</label>
-                  <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full border border-blue-200 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white shadow-sm"/>
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl space-y-2">
+                  <label className="block text-sm font-bold text-blue-800 dark:text-blue-300">1. 我的調課日 (這堂課發生在哪天)</label>
+                  <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full border border-blue-200 dark:border-blue-700 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-white shadow-sm"/>
                 </div>
 
-                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-3">
-                  <label className="block text-sm font-bold text-emerald-800">2. 對方的換課資訊 (要跟誰、哪天換)</label>
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl space-y-3">
+                  <label className="block text-sm font-bold text-emerald-800 dark:text-emerald-300">2. 對方的換課資訊 (要跟誰、哪天換)</label>
                   <div>
-                    <label className="block text-xs font-semibold text-emerald-700 mb-1">選擇調課對象</label>
-                    <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm">
+                    <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">選擇調課對象</label>
+                    <select value={targetTeacher} onChange={e => setTargetTeacher(e.target.value)} className="w-full border border-emerald-200 dark:border-emerald-700 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-emerald-500 shadow-sm">
                       <option value="">-- 請選擇調課對象 --</option>
                       {allOtherTeachers.map(t => (
                         <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>
@@ -1131,16 +1171,16 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-emerald-700 mb-1">對方換課日期</label>
-                      <input type="date" value={targetSwapDate} onChange={e => setTargetSwapDate(e.target.value)} className="w-full border border-emerald-200 rounded-lg p-2 text-sm focus:ring-emerald-500 bg-white shadow-sm"/>
+                      <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">對方換課日期</label>
+                      <input type="date" value={targetSwapDate} onChange={e => setTargetSwapDate(e.target.value)} className="w-full border border-emerald-200 dark:border-emerald-700 rounded-lg p-2 text-sm focus:ring-emerald-500 bg-white dark:bg-slate-800 dark:text-white shadow-sm"/>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-emerald-700 mb-1">對方這堂課第幾節</label>
+                      <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">對方這堂課第幾節</label>
                       <select 
                         value={targetLessonId} 
                         onChange={e => setTargetLessonId(e.target.value)} 
                         disabled={!targetTeacher || targetTeacherLessons.length === 0}
-                        className="w-full border border-emerald-200 rounded-lg p-2 text-sm bg-white font-medium focus:ring-emerald-500 shadow-sm disabled:bg-gray-100 disabled:text-gray-400"
+                        className="w-full border border-emerald-200 dark:border-emerald-700 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-emerald-500 shadow-sm disabled:bg-slate-100 dark:disabled:bg-slate-700 disabled:text-slate-400 dark:disabled:text-slate-500"
                       >
                         {!targetTeacher ? (
                           <option value="">-- 請先選老師 --</option>
@@ -1167,7 +1207,7 @@ export default function App() {
             )}
 
             <div className="flex justify-end gap-2 pt-2">
-              <button onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50">取消</button>
+              <button onClick={onClose} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">取消</button>
               <button onClick={handleSubmit} disabled={!targetTeacher || (requestType === 'swap' && !targetLessonId)} className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 shadow-sm">
                 {editReq ? '儲存修改' : '送出申請'}
               </button>
@@ -1337,52 +1377,52 @@ export default function App() {
     };
 
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
-          <h1 className="text-2xl font-bold">嘉義縣立嘉新國民中學 調代課審核總表</h1>
+          <h1 className="text-2xl font-bold dark:text-white">嘉義縣立嘉新國民中學 調代課審核總表</h1>
           {selectedPrintClassObj ? (
-            <h2 className="text-lg font-bold mt-2">班級：{selectedPrintClassObj.name} 專屬調代課通知表</h2>
+            <h2 className="text-lg font-bold mt-2 dark:text-white">班級：{selectedPrintClassObj.name} 專屬調代課通知表</h2>
           ) : selectedTeacherObj ? (
-            <h2 className="text-lg font-bold mt-2">教師：{selectedTeacherObj.name} ({selectedTeacherObj.displaySubject})</h2>
+            <h2 className="text-lg font-bold mt-2 dark:text-white">教師：{selectedTeacherObj.name} ({selectedTeacherObj.displaySubject})</h2>
           ) : (
-            <h2 className="text-lg font-bold mt-2">{isPublicView ? '全校調代課動態總表' : (isArchiveView ? '歷史歸檔總表' : '全校總表')}</h2>
+            <h2 className="text-lg font-bold mt-2 dark:text-white">{isPublicView ? '全校調代課動態總表' : (isArchiveView ? '歷史歸檔總表' : '全校總表')}</h2>
           )}
-          <p className="text-xs text-gray-600 mt-1">列印時間：{new Date().toLocaleString()}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">列印時間：{new Date().toLocaleString()}</p>
         </div>
 
-        <div className="p-4 border-b bg-slate-50 flex justify-between items-center print:hidden flex-wrap gap-3">
+        <div className="p-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center print:hidden flex-wrap gap-3">
           <div>
             <h2 
               onClick={resetFilters} 
-              className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors group"
+              className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
               title="點擊清除篩選，返回全校總表"
             >
-              <FileText className="w-5 h-5 text-blue-600"/> 
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400"/> 
               <span className="group-hover:underline">
                 {filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate
                   ? `篩選檢視中 (點擊此處返回)` 
                   : (isPublicView ? '🌍 全校最新調代課動態' : (isArchiveView ? '歷史歸檔紀錄' : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄')))}
               </span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">點擊列表中的老師姓名或班級可進行快速篩選，隨時點擊上方標題可返回全校總表</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">點擊列表中的老師姓名或班級可進行快速篩選，隨時點擊上方標題可返回全校總表</p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-white border border-gray-300 rounded-lg px-2 shadow-xs">
-              <span className="text-xs font-bold text-gray-500">區間:</span>
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 shadow-xs">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">區間:</span>
               <input 
                  type="date"
                  value={filterStartDate}
                  onChange={(e) => setFilterStartDate(e.target.value)}
-                 className="text-sm border-none focus:outline-none p-1.5 font-medium bg-transparent text-slate-700"
+                 className="text-sm border-none focus:outline-none p-1.5 font-medium bg-transparent text-slate-700 dark:text-slate-200"
                  title="開始日期"
               />
-              <span className="text-gray-400">至</span>
+              <span className="text-slate-400 dark:text-slate-500">至</span>
               <input 
                  type="date"
                  value={filterEndDate}
                  onChange={(e) => setFilterEndDate(e.target.value)}
-                 className="text-sm border-none focus:outline-none p-1.5 font-medium bg-transparent text-slate-700"
+                 className="text-sm border-none focus:outline-none p-1.5 font-medium bg-transparent text-slate-700 dark:text-slate-200"
                  title="結束日期"
               />
             </div>
@@ -1390,7 +1430,7 @@ export default function App() {
             <select 
                value={filterPrintClassId} 
                onChange={(e) => setFilterPrintClassId(e.target.value)} 
-               className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs"
+               className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 dark:text-slate-200 font-medium shadow-xs"
             >
                <option value="">-- 全部班級 (列印篩選) --</option>
                {classes.map(c => <option key={c.id} value={c.id}>篩選班級：{c.name}</option>)}
@@ -1399,7 +1439,7 @@ export default function App() {
             <select 
                value={filterTeacherId} 
                onChange={(e) => setFilterTeacherId(e.target.value)} 
-               className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs"
+               className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-sm rounded-lg px-3 py-2 focus:ring-blue-500 dark:text-slate-200 font-medium shadow-xs"
             >
                <option value="">-- 全部教師紀錄 --</option>
                {teachers.map(t => <option key={t.id} value={t.id}>篩選：{t.name} 老師</option>)}
@@ -1408,15 +1448,15 @@ export default function App() {
             {(filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate) && (
               <button 
                 onClick={resetFilters} 
-                className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-300 transition-colors"
+                className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
               >
                 清除篩選
               </button>
             )}
 
             {userRole === 'admin' && !isPublicView && (
-              <div className="flex items-center gap-1.5 bg-slate-200/50 border border-slate-300 px-3 py-1.5 rounded-lg">
-                <span className="text-xs font-bold text-slate-700">
+              <div className="flex items-center gap-1.5 bg-slate-200/50 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   {isArchiveView 
                     ? `目前列表歸檔: ${displayRequests.length}張`
                     : (filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate ? `目前列表待審: ${currentPendingCount}張` : `全校待審: ${currentPendingCount}張`)
@@ -1428,7 +1468,7 @@ export default function App() {
                     <button 
                       onClick={() => handleBatchAction('approved')} 
                       disabled={currentPendingCount === 0}
-                      className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors"
+                      className="px-2.5 py-1 bg-emerald-600 text-white rounded-md text-xs font-bold hover:bg-emerald-700 disabled:opacity-40 flex items-center gap-1 shadow-xs transition-colors ml-1"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5"/> {filterTeacherId || filterPrintClassId ? '批次核准' : '全部核准'}
                     </button>
@@ -1453,7 +1493,7 @@ export default function App() {
                       return (
                         <button 
                           onClick={() => showMessage('error', `該${isClass ? '班級' : '老師'}目前列表中沒有「已核准」的申請可寄送總表`)} 
-                          className="px-2.5 py-1 bg-blue-400 text-white rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1 shadow-xs transition-colors ml-1"
+                          className="px-2.5 py-1 bg-blue-400 dark:bg-blue-800 text-white rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1 shadow-xs transition-colors ml-1"
                         >
                           <Mail className="w-3.5 h-3.5"/> 發送總表
                         </button>
@@ -1505,7 +1545,7 @@ export default function App() {
               </div>
             )}
 
-            <button onClick={handlePrint} className="px-3.5 py-2 bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-slate-700 flex items-center gap-1.5 shadow-xs">
+            <button onClick={handlePrint} className="px-3.5 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg text-sm font-bold hover:bg-slate-700 dark:hover:bg-slate-600 flex items-center gap-1.5 shadow-xs transition-colors">
               <Printer className="w-4 h-4"/> 列印表格
             </button>
           </div>
@@ -1517,7 +1557,7 @@ export default function App() {
           ) : (
             <table className="w-full text-sm text-left border-collapse min-w-[800px]">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 border-b print:bg-slate-200 print:text-black">
+                <tr className="bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 border-b dark:border-slate-700 print:bg-slate-200 print:text-black">
                   <th className="p-3 font-semibold">發生日期</th>
                   <th className="p-3 font-semibold">申請人</th>
                   <th className="p-3 font-semibold">類型 / 事由</th>
@@ -1543,40 +1583,40 @@ export default function App() {
                   const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
                   
                   return (
-                    <tr key={req.id} className="border-b hover:bg-slate-50 print:border-black">
-                      <td className="p-3 font-bold text-slate-800">
+                    <tr key={req.id} className="border-b dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 print:border-black transition-colors">
+                      <td className="p-3 font-bold text-slate-800 dark:text-slate-200">
                         {req.type === 'sub' ? (
-                          <span className="text-blue-700">{req.targetDate || '-'}</span>
+                          <span className="text-blue-700 dark:text-blue-400">{req.targetDate || '-'}</span>
                         ) : (
                           <div className="flex flex-col gap-0.5 text-xs">
-                            <span className="text-blue-700">我方：{req.targetDate || '-'}</span>
-                            <span className="text-emerald-700">對方：{req.targetSwapDate || '-'}</span>
+                            <span className="text-blue-700 dark:text-blue-400">我方：{req.targetDate || '-'}</span>
+                            <span className="text-emerald-700 dark:text-emerald-400">對方：{req.targetSwapDate || '-'}</span>
                           </div>
                         )}
                       </td>
-                      <td className="p-3 font-bold text-slate-800">
-                        <button onClick={() => setFilterTeacherId(req.requesterId)} className="hover:text-blue-600 hover:underline flex items-center gap-1 transition-colors group">
+                      <td className="p-3 font-bold text-slate-800 dark:text-slate-200">
+                        <button onClick={() => setFilterTeacherId(req.requesterId)} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline flex items-center gap-1 transition-colors group">
                           {requester} <Search className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" title="點選篩選此教師" />
                         </button>
                       </td>
                       <td className="p-3">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-800'}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'}`}>
                           {req.type === 'sub' ? `請假 (${req.reason})` : '調課'}
                         </span>
                       </td>
                       <td className="p-3 space-y-1">
                         {lesson ? (
                           <div className="flex items-center gap-1.5 text-xs">
-                            <span className="font-semibold text-blue-900">我方：</span>
-                            <span>{lessonTime}</span>
+                            <span className="font-semibold text-blue-900 dark:text-blue-300">我方：</span>
+                            <span className="dark:text-slate-300">{lessonTime}</span>
                             <button 
                               onClick={() => lesson.classId && setFilterPrintClassId(lesson.classId)}
-                              className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200 font-bold transition-colors flex items-center gap-0.5"
+                              className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/50 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-700/50 font-bold transition-colors flex items-center gap-0.5"
                               title="點選篩選此班級"
                             >
                               {className} <Search className="w-2.5 h-2.5"/>
                             </button>
-                            <span className="text-slate-500">({lesson.subject})</span>
+                            <span className="text-slate-500 dark:text-slate-400">({lesson.subject})</span>
                           </div>
                         ) : (
                           <div className="text-xs text-slate-400">原定課堂資訊遺失</div>
@@ -1584,26 +1624,26 @@ export default function App() {
 
                         {req.type === 'swap' && (
                           targetLesson ? (
-                            <div className="flex items-center gap-1.5 text-xs pt-0.5 border-t border-slate-100">
-                              <span className="font-semibold text-emerald-900">對方：</span>
-                              <span>{targetLessonTime}</span>
+                            <div className="flex items-center gap-1.5 text-xs pt-0.5 border-t border-slate-100 dark:border-slate-800">
+                              <span className="font-semibold text-emerald-900 dark:text-emerald-300">對方：</span>
+                              <span className="dark:text-slate-300">{targetLessonTime}</span>
                               <button 
                                 onClick={() => targetLesson.classId && setFilterPrintClassId(targetLesson.classId)}
-                                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 font-bold transition-colors flex items-center gap-0.5"
+                                className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-800/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-700/50 font-bold transition-colors flex items-center gap-0.5"
                                 title="點選篩選此班級"
                               >
                                 {targetClassName} <Search className="w-2.5 h-2.5"/>
                               </button>
-                              <span className="text-slate-500">({targetLesson.subject})</span>
+                              <span className="text-slate-500 dark:text-slate-400">({targetLesson.subject})</span>
                             </div>
                           ) : (
-                            <div className="text-xs text-emerald-700 font-medium">對方換課時段：(未對應具體節次或跨校/自訂)</div>
+                            <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">對方換課時段：(未對應具體節次或跨校/自訂)</div>
                           )
                         )}
                       </td>
-                      <td className="p-3 font-bold text-blue-600">
+                      <td className="p-3 font-bold text-blue-600 dark:text-blue-400">
                         {req.targetTeacherId ? (
-                          <button onClick={() => setFilterTeacherId(req.targetTeacherId)} className="hover:text-blue-800 hover:underline flex items-center gap-1 transition-colors group">
+                          <button onClick={() => setFilterTeacherId(req.targetTeacherId)} className="hover:text-blue-800 dark:hover:text-blue-300 hover:underline flex items-center gap-1 transition-colors group">
                             {target} <Search className="w-3 h-3 text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity" title="點選篩選此教師" />
                           </button>
                         ) : (
@@ -1611,16 +1651,16 @@ export default function App() {
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        {req.status === 'pending' && <span className="text-orange-600 bg-orange-100 px-2.5 py-1 rounded-full text-xs font-bold">審核中</span>}
-                        {req.status === 'approved' && <span className="text-green-600 bg-green-100 px-2.5 py-1 rounded-full text-xs font-bold">已核准</span>}
-                        {req.status === 'rejected' && <span className="text-red-600 bg-red-100 px-2.5 py-1 rounded-full text-xs font-bold">已退回</span>}
+                        {req.status === 'pending' && <span className="text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-2.5 py-1 rounded-full text-xs font-bold">審核中</span>}
+                        {req.status === 'approved' && <span className="text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2.5 py-1 rounded-full text-xs font-bold">已核准</span>}
+                        {req.status === 'rejected' && <span className="text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2.5 py-1 rounded-full text-xs font-bold">已退回</span>}
                       </td>
                       <td className="p-3 text-center print:hidden">
                         <div className="flex justify-center gap-1.5">
                           {userRole === 'admin' && req.status === 'pending' && (
                             <>
-                              <button onClick={()=>handleAction(req.id, 'approved')} className="px-2.5 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-md text-xs font-bold border border-green-200 shadow-xs">核准</button>
-                              <button onClick={()=>handleAction(req.id, 'rejected')} className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 rounded-md text-xs font-bold border border-red-200 shadow-xs">退回</button>
+                              <button onClick={()=>handleAction(req.id, 'approved')} className="px-2.5 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 rounded-md text-xs font-bold border border-green-200 dark:border-green-800 shadow-xs transition-colors">核准</button>
+                              <button onClick={()=>handleAction(req.id, 'rejected')} className="px-2.5 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-md text-xs font-bold border border-red-200 dark:border-red-800 shadow-xs transition-colors">退回</button>
                             </>
                           )}
                           {req.status === 'approved' && (
@@ -1628,13 +1668,13 @@ export default function App() {
                               href={getSingleEmailUrl(req)} 
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-md text-xs font-bold border border-blue-200 flex items-center gap-1 shadow-xs"
+                              className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-md text-xs font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-1 shadow-xs transition-colors"
                             >
                               <Mail className="w-3.5 h-3.5"/> 寄信
                             </a>
                           )}
                           {(userRole === 'admin' || req.requesterId === loggedTeacherId) && (
-                            <button onClick={() => handleDeleteRequest(req.id)} className="px-2.5 py-1 bg-gray-100 text-gray-600 hover:bg-red-500 hover:text-white rounded-md text-xs font-bold transition">
+                            <button onClick={() => handleDeleteRequest(req.id)} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-500 dark:hover:bg-red-600 hover:text-white dark:hover:text-white rounded-md text-xs font-bold transition-colors">
                               刪除
                             </button>
                           )}
@@ -1650,11 +1690,11 @@ export default function App() {
 
         {showDeleteArchivedModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 print:hidden">
-            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600 animate-in zoom-in-95 duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600 animate-in zoom-in-95 duration-200">
               <h3 className="text-lg font-bold text-red-600 mb-2 flex items-center gap-2"><AlertTriangle className="w-5 h-5"/> 危險操作警告</h3>
-              <p className="text-gray-600 text-sm mb-6">您即將永久刪除目前列表中的 <strong>{displayRequests.length}</strong> 筆歸檔紀錄，此操作無法復原！請問是否確認刪除？</p>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">您即將永久刪除目前列表中的 <strong className="dark:text-white">{displayRequests.length}</strong> 筆歸檔紀錄，此操作無法復原！請問是否確認刪除？</p>
               <div className="flex justify-end gap-2">
-                <button onClick={() => setShowDeleteArchivedModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">取消</button>
+                <button onClick={() => setShowDeleteArchivedModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">取消</button>
                 <button onClick={executeDeleteArchived} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 shadow-sm">確定永久刪除</button>
               </div>
             </div>
@@ -1666,13 +1706,13 @@ export default function App() {
 
   const renderSchedule = () => {
     return (
-      <div className="overflow-x-auto bg-white rounded-2xl shadow-sm border border-slate-200">
-        <table className="w-full text-center border-collapse min-w-[480px] lg:min-w-[800px]">
+      <div className="overflow-x-auto bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+        <table className="w-full text-sm text-center border-collapse min-w-[480px] lg:min-w-[800px]">
           <thead>
-            <tr className="bg-slate-50 text-slate-700">
-              <th className="border-b border-r border-slate-200 p-2 md:p-3 w-16 md:w-28 font-semibold bg-slate-100 text-xs md:text-sm">節次 / 時間</th>
+            <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300">
+              <th className="border-b border-r border-slate-200 dark:border-slate-700 p-2 md:p-3 w-16 md:w-28 font-semibold bg-slate-100 dark:bg-slate-800/80 text-xs md:text-sm">節次 / 時間</th>
               {DAYS.map((day, idx) => (
-                <th key={idx} className="border-b border-slate-200 p-2 md:p-3 font-semibold w-[16%] md:w-[18%] text-xs md:text-sm">{day}</th>
+                <th key={idx} className="border-b border-slate-200 dark:border-slate-700 p-2 md:p-3 font-semibold w-[16%] md:w-[18%] text-xs md:text-sm">{day}</th>
               ))}
             </tr>
           </thead>
@@ -1680,19 +1720,19 @@ export default function App() {
             {PERIODS.map((period, periodIdx) => {
               if (period.isBreak) {
                 return (
-                  <tr key="break" className="bg-slate-50/50">
-                    <td className="border-r border-b border-slate-100 p-1 md:p-2 font-medium text-slate-500 text-xs bg-slate-100/50">
+                  <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30">
+                    <td className="border-r border-b border-slate-100 dark:border-slate-800/50 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-xs bg-slate-100/50 dark:bg-slate-800/50">
                       <div className="whitespace-nowrap">{period.name}</div>
                       <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 hidden sm:block">{period.time}</div>
                     </td>
-                    <td colSpan={5} className="border-b border-slate-100 p-1 md:p-2 text-slate-400 tracking-widest text-xs">休息時間</td>
+                    <td colSpan={5} className="border-b border-slate-100 dark:border-slate-800/50 p-1 md:p-2 text-slate-400 dark:text-slate-500 tracking-widest text-xs">休息時間</td>
                   </tr>
                 );
               }
 
               return (
-                <tr key={period.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="border-r border-b border-slate-100 p-1 md:p-2 bg-slate-50/80 text-[11px] md:text-xs font-medium text-slate-600">
+                <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="border-r border-b border-slate-100 dark:border-slate-800/50 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[11px] md:text-xs font-medium text-slate-600 dark:text-slate-400">
                     <div className="whitespace-nowrap">{period.name}</div>
                     <div className="text-[9px] md:text-[10px] text-slate-400 mt-0.5 hidden sm:block">{period.time}</div>
                   </td>
@@ -1703,10 +1743,10 @@ export default function App() {
                     if (isEditing && viewMode === 'class' && userRole === 'admin') {
                       const tIndex = dayIdx * 100 + periodIdx + 1; 
                       return (
-                        <td key={dayIdx} className="border-b border-l border-slate-100 p-1 relative h-16 md:h-20 bg-indigo-50/30">
+                        <td key={dayIdx} className="border-b border-l border-slate-100 dark:border-slate-800/50 p-1 relative h-16 md:h-20 bg-blue-50/20 dark:bg-blue-900/10">
                           <input
                             type="text" tabIndex={tIndex}
-                            className="w-full h-full p-1 md:p-2 text-center text-xs md:text-sm font-bold border-2 border-dashed border-slate-300 focus:border-solid focus:border-indigo-500 focus:outline-none focus:bg-white rounded-lg md:rounded-xl text-indigo-900 transition-all placeholder:text-slate-300"
+                            className="w-full h-full p-1 md:p-2 text-center text-xs md:text-sm font-bold border-2 border-dashed border-slate-300 dark:border-slate-600 focus:border-solid focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:bg-white dark:focus:bg-slate-800 rounded-lg md:rounded-xl text-blue-900 dark:text-blue-200 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 bg-transparent"
                             placeholder="例: 國文 溫盛傑"
                             value={editData[`${dayNum}_${period.id}`] !== undefined ? editData[`${dayNum}_${period.id}`] : ''}
                             onChange={(e) => setEditData({...editData, [`${dayNum}_${period.id}`]: e.target.value})}
@@ -1729,7 +1769,7 @@ export default function App() {
                     const canInitiateRequest = isMyOwnSchedule || isAdmin;
 
                     return (
-                      <td key={dayIdx} className="border-b border-l border-slate-100 p-1 md:p-2 relative h-16 md:h-20 group">
+                      <td key={dayIdx} className="border-b border-l border-slate-100 dark:border-slate-800/50 p-1 md:p-2 relative h-16 md:h-20 group">
                         {lesson ? (
                           <div 
                             onClick={(e) => { 
@@ -1738,17 +1778,23 @@ export default function App() {
                               }
                             }}
                             className={`h-full flex flex-col items-center justify-center rounded-lg md:rounded-xl p-1 md:p-2 
-                              ${period.isTutor ? 'bg-yellow-50 border border-yellow-200' : 'bg-white border border-blue-200'} 
+                              ${period.isTutor 
+                                ? 'bg-amber-100/60 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700/50' 
+                                : 'bg-blue-100/50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700'
+                              } 
                               shadow-sm relative transition-all group-hover:shadow-md
-                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-300 ring-2 ring-transparent hover:ring-blue-100' : ''}
+                              ${canInitiateRequest && !isEditing 
+                                ? 'cursor-pointer hover:bg-blue-100 dark:hover:bg-slate-700 hover:border-blue-300 dark:hover:border-slate-600 ring-2 ring-transparent hover:ring-blue-200 dark:hover:ring-slate-600' 
+                                : ''
+                              }
                             `}
                           >
                             {viewMode === 'class' ? (
                               <>
-                                <div className="font-bold text-blue-900 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight text-center tracking-wide">{lesson.subject}</div>
+                                <div className="font-bold text-blue-900 dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight text-center tracking-wide">{lesson.subject}</div>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
-                                  className="text-[10px] md:text-xs text-blue-600 hover:text-blue-800 transition flex items-center justify-center gap-0.5 md:gap-1 relative z-10 w-full truncate font-medium"
+                                  className="text-[10px] md:text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition flex items-center justify-center gap-0.5 md:gap-1 relative z-10 w-full truncate font-medium bg-transparent border-none"
                                   title={`點擊查看 ${teacherName} 老師課表`}
                                 >
                                   <User className="w-2.5 h-2.5 md:w-3 md:h-3 shrink-0" /> 
@@ -1759,26 +1805,26 @@ export default function App() {
                               <>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
-                                  className="font-bold text-blue-900 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:text-blue-700 transition-colors cursor-pointer relative z-10 leading-tight text-center tracking-wide"
+                                  className="font-bold text-blue-900 dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:text-blue-700 dark:hover:text-blue-200 transition-colors cursor-pointer relative z-10 leading-tight text-center tracking-wide bg-transparent border-none"
                                   title={`點擊查看 ${className} 課表`}
                                 >
                                   {className}
                                 </button>
-                                <div className="text-[10px] md:text-xs text-blue-600 relative z-10 leading-tight truncate font-medium flex items-center justify-center gap-0.5">
+                                <div className="text-[10px] md:text-xs text-blue-600 dark:text-blue-400 relative z-10 leading-tight truncate font-medium flex items-center justify-center gap-0.5">
                                   {lesson.subject}
                                 </div>
                               </>
                             )}
                             
                             {(canInitiateRequest && !isEditing) && (
-                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/95' : 'bg-blue-600/95'} text-white rounded-lg md:rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-20`}>
+                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/95 dark:bg-amber-700/95' : 'bg-blue-600/95 dark:bg-blue-700/95'} text-white rounded-lg md:rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-20`}>
                                 <span className="text-sm md:text-base mb-0.5 hidden md:block">✨</span>
                                 <span className="text-center leading-tight px-1 text-[10px] md:text-xs">{isAdmin ? '管理員代申請' : '點擊申請調代'}</span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="h-full flex items-center justify-center text-slate-200 text-xs">-</div>
+                          <div className="h-full flex items-center justify-center text-slate-200 dark:text-slate-700 text-xs">-</div>
                         )}
                       </td>
                     );
@@ -1794,7 +1840,7 @@ export default function App() {
 
   if (!isDataLoaded) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-blue-600 gap-4">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 gap-4 transition-colors">
         <Database className="w-10 h-10 animate-bounce" />
         <h2 className="text-lg font-bold">正在連線至嘉新國中雲端資料庫...</h2>
       </div>
@@ -1802,7 +1848,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden">
+    <div className={`min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden transition-colors`}>
       {/* 專屬列印樣式：強制隱藏瀏覽器預設的頁首(日期)與頁尾(網址)，並解除所有高度限制防止空白頁 */}
       <style>
         {`
@@ -1828,7 +1874,7 @@ export default function App() {
         `}
       </style>
       
-      <header className="bg-blue-700 text-white shadow-md sticky top-0 z-30 print:hidden">
+      <header className="bg-blue-700 dark:bg-blue-900 text-white shadow-md sticky top-0 z-30 print:hidden transition-colors">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
           <div 
             className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity select-none"
@@ -1843,23 +1889,23 @@ export default function App() {
             }}
             title="點擊返回首頁"
           >
-            <BookOpen className="w-8 h-8 text-blue-200" />
+            <BookOpen className="w-8 h-8 text-blue-200 dark:text-blue-300" />
             <div>
               <h1 className="text-xl md:text-2xl font-bold tracking-wide">嘉義縣立嘉新國民中學</h1>
-              <p className="text-xs text-blue-200">智慧課表與代調課系統</p>
+              <p className="text-xs text-blue-200 dark:text-blue-300">智慧課表與代調課系統</p>
             </div>
           </div>
 
           <nav className="flex flex-wrap items-center gap-2 my-2 sm:my-0">
           <button 
             onClick={() => {setActiveTab('schedule'); setViewMode('class'); setIsEditing(false);}}
-            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'class' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'class' ? 'bg-blue-800 dark:bg-blue-950 text-white shadow-inner' : 'text-blue-100 dark:text-blue-200 hover:bg-blue-600 dark:hover:bg-blue-800'}`}
           >
             🏫 班級課表
           </button>
           <button 
             onClick={() => {setActiveTab('schedule'); setViewMode('teacher'); setIsEditing(false);}}
-            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'teacher' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'schedule' && viewMode === 'teacher' ? 'bg-blue-800 dark:bg-blue-950 text-white shadow-inner' : 'text-blue-100 dark:text-blue-200 hover:bg-blue-600 dark:hover:bg-blue-800'}`}
           >
             📅 教師課表
           </button>
@@ -1874,7 +1920,7 @@ export default function App() {
                   setFilterStartDate('');
                   setFilterEndDate('');
                 }}
-                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 dark:bg-blue-950 text-white shadow-inner' : 'text-blue-100 dark:text-blue-200 hover:bg-blue-600 dark:hover:bg-blue-800'}`}
               >
                 🌍 全校動態
               </button>
@@ -1887,7 +1933,7 @@ export default function App() {
                   setFilterStartDate('');
                   setFilterEndDate('');
                 }}
-                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 dark:bg-blue-950 text-white shadow-inner' : 'text-blue-100 dark:text-blue-200 hover:bg-blue-600 dark:hover:bg-blue-800'}`}
               >
                 📋 {userRole === 'admin' ? '審核中心' : '我的申請'}
                 {userRole === 'admin' && requests.filter(r => r.status === 'pending' && !r.isArchived).length > 0 && (
@@ -1905,7 +1951,7 @@ export default function App() {
                   setFilterStartDate('');
                   setFilterEndDate('');
                 }}
-                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 text-white shadow-inner' : 'text-blue-100 hover:bg-blue-600'}`}
+                className={`px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 dark:bg-blue-950 text-white shadow-inner' : 'text-blue-100 dark:text-blue-200 hover:bg-blue-600 dark:hover:bg-blue-800'}`}
               >
                 🗂️ 歷史歸檔
               </button>
@@ -1914,6 +1960,13 @@ export default function App() {
         </nav>
 
         <div className="flex items-center space-x-2 md:space-x-3 w-full sm:w-auto justify-end">
+            <button 
+              onClick={toggleDarkMode}
+              className="p-2 text-blue-100 dark:text-amber-300 hover:text-white transition rounded-full hover:bg-blue-600 dark:hover:bg-blue-800"
+              title={isDarkMode ? "切換至淺色模式" : "切換至深色模式"}
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 md:w-5 md:h-5"/> : <Moon className="w-4 h-4 md:w-5 md:h-5"/>}
+            </button>
             {userRole === 'teacher' && (
               <button onClick={() => { setPwdMessage({ type: '', text: '' }); setShowPwdModal(true); }} className="p-2 text-amber-300 hover:text-white transition" title="修改密碼">
                 <Key className="w-4 h-4 md:w-5 md:h-5"/>
@@ -1921,7 +1974,7 @@ export default function App() {
             )}
             <button 
               onClick={() => userRole !== 'guest' ? handleLogout() : setShowLoginModal(true)}
-              className={`flex items-center space-x-1 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold shadow transition ${userRole !== 'guest' ? 'bg-blue-800 text-white border border-blue-600' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
+              className={`flex items-center space-x-1 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold shadow transition ${userRole !== 'guest' ? 'bg-blue-800 dark:bg-blue-950 text-white border border-blue-600 dark:border-blue-800' : 'bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white'}`}
             >
               {userRole !== 'guest' ? <><Unlock className="w-3 h-3 md:w-4 md:h-4"/> <span>登出 ({userRole === 'admin' ? '管理員' : '教師'})</span></> : <><Lock className="w-3 h-3 md:w-4 md:h-4"/> <span>教師登入</span></>}
             </button>
@@ -1932,18 +1985,18 @@ export default function App() {
       <main className={`max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-6 print:p-0 ${showFeeReportModal ? 'print:hidden' : ''}`}>
         <div className="space-y-4 md:space-y-6">
           {importStatus.message && (
-            <div className={`print:hidden border px-4 py-3 rounded-xl flex items-center gap-2 font-bold shadow-sm text-sm md:text-base ${importStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            <div className={`print:hidden border px-4 py-3 rounded-xl flex items-center gap-2 font-bold shadow-sm text-sm md:text-base ${importStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/30 dark:border-green-800 dark:text-green-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400'}`}>
               {importStatus.type === 'error' ? <AlertTriangle className="w-5 h-5"/> : <CheckCircle2 className="w-5 h-5"/>} {importStatus.message}
             </div>
           )}
 
           {userRole === 'admin' && classes.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm print:hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl shadow-sm print:hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
-              <h3 className="font-bold text-amber-800">雲端資料庫目前為空</h3>
-              <p className="text-amber-700 text-sm">請點擊右方按鈕載入初始預設資料。</p>
+              <h3 className="font-bold text-amber-800 dark:text-amber-400">雲端資料庫目前為空</h3>
+              <p className="text-amber-700 dark:text-amber-500 text-sm">請點擊右方按鈕載入初始預設資料。</p>
             </div>
-            <button onClick={initializeDatabase} className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 shadow text-sm w-full md:w-auto">
+            <button onClick={initializeDatabase} className="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 shadow text-sm w-full md:w-auto transition-colors">
               🔄 載入預設資料
             </button>
           </div>
@@ -1954,31 +2007,31 @@ export default function App() {
           renderRequestsView()
         ) : (
           <>
-            <div className="bg-white p-3 md:p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 print:hidden">
+            <div className="bg-white dark:bg-slate-900 p-3 md:p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 print:hidden transition-colors">
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full md:w-auto">
-                  <span className="font-bold text-slate-700">選擇檢視{viewMode === 'class' ? '班級' : '教師'}：</span>
+                  <span className="font-bold text-slate-700 dark:text-slate-300">選擇檢視{viewMode === 'class' ? '班級' : '教師'}：</span>
                   {viewMode === 'class' ? (
                     <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                      <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsEditing(false);}} className="border border-slate-300 rounded-lg px-3 md:px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-auto md:max-w-[150px] truncate">
+                      <select value={selectedClass} onChange={(e) => {setSelectedClass(e.target.value); setIsEditing(false);}} className="border border-slate-300 dark:border-slate-700 rounded-lg px-3 md:px-4 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-auto md:max-w-[150px] truncate">
                         {classes.map(c => <option key={c.id} value={c.id}>{c.name.length > 30 ? c.name.substring(0, 30) + '...' : c.name}</option>)}
                       </select>
                       {userRole === 'admin' && (
                         <div className="flex flex-wrap items-center gap-1 md:ml-2 w-full md:w-auto mt-2 md:mt-0">
-                          <button onClick={() => setShowAddClassModal(true)} className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
+                          <button onClick={() => setShowAddClassModal(true)} className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none transition-colors">
                             <Plus className="w-4 h-4"/> 新增
                           </button>
                           {classes.length > 0 && (
-                            <button onClick={() => { setClassToDelete(selectedClass); setShowDeleteClassModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
+                            <button onClick={() => { setClassToDelete(selectedClass); setShowDeleteClassModal(true); }} className="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none transition-colors">
                               <Trash2 className="w-4 h-4"/> 刪除
                             </button>
                           )}
                           {classes.length > 0 && (
-                            <button onClick={() => setShowDeleteAllClassesModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                            <button onClick={() => setShowDeleteAllClassesModal(true)} className="px-3 py-1.5 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none transition-colors">
                               <AlertTriangle className="w-4 h-4"/> 刪除全部
                             </button>
                           )}
                           {classes.some(c => c.name.length > 30 || c.name.includes('') || c.name.includes('?')) && (
-                            <button onClick={executeDeleteGarbledClasses} className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                            <button onClick={executeDeleteGarbledClasses} className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none transition-colors">
                               <Eraser className="w-4 h-4"/> 清除亂碼
                             </button>
                           )}
@@ -1987,31 +2040,31 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                      <select value={teacherSortMode} onChange={(e) => setTeacherSortMode(e.target.value)} className="border border-slate-300 rounded-lg px-2 md:px-3 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-[48%] md:w-auto">
+                      <select value={teacherSortMode} onChange={(e) => setTeacherSortMode(e.target.value)} className="border border-slate-300 dark:border-slate-700 rounded-lg px-2 md:px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:ring-2 focus:ring-blue-500 outline-none w-[48%] md:w-auto">
                         <option value="default">預設排序</option>
                         <option value="subject">依科目</option>
                         <option value="name">依姓名</option>
                       </select>
-                      <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 rounded-lg px-3 md:px-4 py-2 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none w-[48%] md:w-auto md:max-w-[150px] truncate">
+                      <select value={selectedTeacher} onChange={(e) => setSelectedTeacher(e.target.value)} className="border border-slate-300 dark:border-slate-700 rounded-lg px-3 md:px-4 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:ring-2 focus:ring-blue-500 outline-none w-[48%] md:w-auto md:max-w-[150px] truncate">
                         {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name.length > 20 ? t.name.substring(0, 20) + '...' : t.name} ({t.displaySubject?.length > 10 ? t.displaySubject.substring(0, 10) + '...' : t.displaySubject})</option>)}
                       </select>
 
                       {userRole === 'admin' && (
                         <div className="flex flex-wrap items-center gap-1 w-full md:w-auto md:ml-2 mt-2 md:mt-0">
-                          <button onClick={() => setShowAddTeacherModal(true)} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
+                          <button onClick={() => setShowAddTeacherModal(true)} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none transition-colors">
                             <Plus className="w-4 h-4"/> 新增
                           </button>
                           {teachers.length > 0 && (
-                            <button onClick={() => { setTeacherToDelete(selectedTeacher); setShowDeleteTeacherModal(true); }} className="px-3 py-1.5 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none">
+                            <button onClick={() => { setTeacherToDelete(selectedTeacher); setShowDeleteTeacherModal(true); }} className="px-3 py-1.5 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 text-sm font-bold flex items-center justify-center gap-1 flex-1 md:flex-none transition-colors">
                             <Trash2 className="w-4 h-4"/> 刪除
                           </button>
                         )}
                         {teachers.length > 0 && (
                           <>
-                            <button onClick={() => setShowDeduplicateModal(true)} className="px-3 py-1.5 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                            <button onClick={() => setShowDeduplicateModal(true)} className="px-3 py-1.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none transition-colors">
                               <Eraser className="w-4 h-4"/> 合併重複
                             </button>
-                            <button onClick={() => setShowDeleteAllTeachersModal(true)} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none">
+                            <button onClick={() => setShowDeleteAllTeachersModal(true)} className="px-3 py-1.5 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 text-sm font-bold flex items-center justify-center gap-1 shadow-sm flex-1 md:flex-none transition-colors">
                               <AlertTriangle className="w-4 h-4"/> 刪除全部
                             </button>
                           </>
@@ -2020,10 +2073,10 @@ export default function App() {
                     )}
 
                     {userRole === 'teacher' && selectedTeacher === loggedTeacherId && (
-                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 mt-2 md:mt-0">我的專屬課表</span>
+                        <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 mt-2 md:mt-0 transition-colors">我的專屬課表</span>
                       )}
                       {userRole === 'teacher' && selectedTeacher !== loggedTeacherId && (
-                        <button onClick={() => setSelectedTeacher(loggedTeacherId)} className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 flex items-center justify-center gap-1 transition shadow-xs w-full md:w-auto mt-2 md:mt-0">
+                        <button onClick={() => setSelectedTeacher(loggedTeacherId)} className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800 flex items-center justify-center gap-1 transition-colors shadow-xs w-full md:w-auto mt-2 md:mt-0">
                           <ArrowLeft className="w-4 h-4"/> 返回我的課表
                         </button>
                       )}
@@ -2034,19 +2087,19 @@ export default function App() {
                 {viewMode === 'class' && userRole === 'admin' && (
                   isEditing ? (
                     <div className="flex gap-2 w-full md:w-auto mt-3 md:mt-0">
-                      <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-bold flex-1 md:flex-none">取消</button>
-                      <button onClick={saveEditing} className="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-sm flex-1 md:flex-none">
+                      <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-sm font-bold flex-1 md:flex-none transition-colors">取消</button>
+                      <button onClick={saveEditing} className="px-5 py-2 bg-emerald-600 dark:bg-emerald-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 shadow-sm flex-1 md:flex-none transition-colors">
                         <Save className="w-4 h-4"/> 儲存至雲端
                       </button>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2 w-full md:w-auto mt-3 md:mt-0">
-                      <button onClick={() => setShowClearClassModal(true)} className="px-3 py-2 bg-orange-50 text-orange-600 border border-orange-200 rounded-lg text-sm font-bold hover:bg-orange-100 flex-1 md:flex-none">清空本班</button>
-                      <button onClick={() => setShowClearAllModal(true)} className="px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-bold hover:bg-red-100 flex-1 md:flex-none">清空全部</button>
-                      <button onClick={() => setShowImportModal(true)} className="px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-sm font-bold hover:bg-purple-100 flex items-center justify-center gap-1 flex-1 md:flex-none">
+                      <button onClick={() => setShowClearClassModal(true)} className="px-3 py-2 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded-lg text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-900/40 flex-1 md:flex-none transition-colors">清空本班</button>
+                      <button onClick={() => setShowClearAllModal(true)} className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-sm font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex-1 md:flex-none transition-colors">清空全部</button>
+                      <button onClick={() => setShowImportModal(true)} className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-lg text-sm font-bold hover:bg-purple-100 dark:hover:bg-purple-900/40 flex items-center justify-center gap-1 flex-1 md:flex-none transition-colors">
                         <Upload className="w-4 h-4"/> 匯入 CSV
                       </button>
-                      <button onClick={startEditing} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-1 hover:bg-blue-700 shadow-sm flex-1 md:flex-none">
+                      <button onClick={startEditing} className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-1 hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm flex-1 md:flex-none transition-colors">
                         <Edit className="w-4 h-4"/> 快速編輯
                       </button>
                     </div>
@@ -2054,8 +2107,8 @@ export default function App() {
                 )}
               </div>
               
-              <div className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1.5 md:hidden px-1">
-                <Info className="w-3.5 h-3.5 text-blue-500"/>
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5 md:hidden px-1">
+                <Info className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400"/>
                 <span className="leading-tight">手機版提示：若課表較大，可雙指縮放或左右滑動查看完整課表</span>
               </div>
               
@@ -2070,35 +2123,35 @@ export default function App() {
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
       {showPwdModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
-            <div className="bg-amber-500 p-4 flex justify-between items-center text-white">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full overflow-hidden transition-colors">
+            <div className="bg-amber-500 dark:bg-amber-600 p-4 flex justify-between items-center text-white">
               <h3 className="text-lg font-bold flex items-center gap-2"><Key className="w-5 h-5" /> 修改個人密碼</h3>
-              <button onClick={() => setShowPwdModal(false)} className="hover:bg-amber-600 p-1 rounded-full"><X className="w-5 h-5"/></button>
+              <button onClick={() => setShowPwdModal(false)} className="hover:bg-amber-600 dark:hover:bg-amber-700 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">原密碼</label>
-                <input type="password" value={pwdOld} onChange={e=>setPwdOld(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-amber-500" placeholder="預設為 1234" />
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">原密碼</label>
+                <input type="password" value={pwdOld} onChange={e=>setPwdOld(e.target.value)} className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-amber-500" placeholder="預設為 1234" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">新密碼</label>
-                <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-amber-500" placeholder="至少 4 碼" />
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">新密碼</label>
+                <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-amber-500" placeholder="至少 4 碼" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">確認新密碼</label>
-                <input type="password" value={pwdConfirm} onChange={e=>setPwdConfirm(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-amber-500" placeholder="再次輸入新密碼" />
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">確認新密碼</label>
+                <input type="password" value={pwdConfirm} onChange={e=>setPwdConfirm(e.target.value)} className="w-full border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-amber-500" placeholder="再次輸入新密碼" />
               </div>
 
               {pwdMessage.text && (
-                <div className={`p-3 rounded-lg text-xs font-bold text-center ${pwdMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                <div className={`p-3 rounded-lg text-xs font-bold text-center ${pwdMessage.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'}`}>
                   {pwdMessage.text}
                 </div>
               )}
 
               <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowPwdModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50">取消</button>
-                <button onClick={handleChangePassword} className="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 shadow-sm">確認修改</button>
+                <button onClick={() => setShowPwdModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+                <button onClick={handleChangePassword} className="px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 shadow-sm transition-colors">確認修改</button>
               </div>
             </div>
           </div>
@@ -2106,40 +2159,40 @@ export default function App() {
       )}
 
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden">
-            <div className="bg-blue-700 p-4 flex justify-between items-center text-white">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full overflow-hidden transition-colors">
+            <div className="bg-blue-700 dark:bg-blue-800 p-4 flex justify-between items-center text-white">
               <h3 className="text-lg font-bold flex items-center gap-2"><Lock className="w-5 h-5" /> 教師登入</h3>
-              <button onClick={() => {setShowLoginModal(false); setAdminPassword(''); setTeacherPassword('');}} className="hover:bg-blue-800 p-1 rounded-full"><X className="w-5 h-5"/></button>
+              <button onClick={() => {setShowLoginModal(false); setAdminPassword(''); setTeacherPassword('');}} className="hover:bg-blue-800 dark:hover:bg-blue-700 p-1 rounded-full transition-colors"><X className="w-5 h-5"/></button>
             </div>
             <div className="p-6 space-y-6">
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                <h4 className="font-bold text-slate-800 text-sm flex items-center gap-2"><User className="w-4 h-4 text-blue-600"/> 教師身分登入</h4>
-                <select value={selectedLoginTeacher} onChange={e=>setSelectedLoginTeacher(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white font-medium focus:ring-blue-500">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2"><User className="w-4 h-4 text-blue-600 dark:text-blue-400"/> 教師身分登入</h4>
+                <select value={selectedLoginTeacher} onChange={e=>setSelectedLoginTeacher(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-blue-500">
                   {enhancedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
                 </select>
                 <div className="flex gap-2">
-                  <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-gray-300 rounded-lg p-2 text-sm focus:ring-blue-500" />
-                  <button onClick={handleTeacherLogin} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm">登入</button>
+                  <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-blue-500" />
+                  <button onClick={handleTeacherLogin} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 shadow-sm transition-colors">登入</button>
                 </div>
               </div>
 
               <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">管理員專區</span>
-                <div className="flex-grow border-t border-gray-200"></div>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-400 dark:text-slate-500 text-xs">管理員專區</span>
+                <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
               </div>
 
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-3">
-                <h4 className="font-bold text-amber-900 text-sm flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-amber-600"/> 管理者登入</h4>
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 space-y-3">
+                <h4 className="font-bold text-amber-900 dark:text-amber-400 text-sm flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-500"/> 管理者登入</h4>
                 <div className="flex gap-2">
-                  <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} className="flex-1 border border-amber-300 rounded-lg p-2 text-sm focus:ring-amber-500 bg-white" placeholder="請輸入管理者密碼" />
-                  <button onClick={handleAdminLogin} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 shadow-sm">登入</button>
+                  <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} className="flex-1 border border-amber-300 dark:border-amber-700 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-amber-500" placeholder="請輸入管理者密碼" />
+                  <button onClick={handleAdminLogin} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-700 shadow-sm transition-colors">登入</button>
                 </div>
               </div>
 
               <div className="text-center pt-2">
-                <button onClick={() => {setShowLoginModal(false); setAdminPassword(''); setTeacherPassword('');}} className="text-xs text-gray-500 hover:text-gray-800 underline">取消並以訪客繼續</button>
+                <button onClick={() => {setShowLoginModal(false); setAdminPassword(''); setTeacherPassword('');}} className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 underline transition-colors">取消並以訪客繼續</button>
               </div>
             </div>
           </div>
@@ -2147,145 +2200,145 @@ export default function App() {
       )}
 
       {showAddClassModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">新增班級</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 transition-colors">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">新增班級</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">班級代號 (例: 705)</label>
-                <input type="text" value={newClassId} onChange={e => setNewClassId(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="705" />
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">班級代號 (例: 705)</label>
+                <input type="text" value={newClassId} onChange={e => setNewClassId(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="705" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">顯示名稱 (例: 7年05班)</label>
-                <input type="text" value={newClassName} onChange={e => setNewClassName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="7年05班" />
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">顯示名稱 (例: 7年05班)</label>
+                <input type="text" value={newClassName} onChange={e => setNewClassName(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="7年05班" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setShowAddClassModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50">取消</button>
-              <button onClick={handleAddClass} disabled={!newClassId || !newClassName} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50">確認新增</button>
+              <button onClick={() => setShowAddClassModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={handleAddClass} disabled={!newClassId || !newClassName} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors">確認新增</button>
             </div>
           </div>
         </div>
       )}
 
       {showClearClassModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-orange-500">
-            <h3 className="text-lg font-bold text-orange-600 mb-2">確認清空本班課表？</h3>
-            <p className="text-gray-600 text-sm mb-6">您即將清空本班在雲端上的所有課表資料。</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-orange-500 transition-colors">
+            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-2">確認清空本班課表？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">您即將清空本班在雲端上的所有課表資料。</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowClearClassModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeClearClass} className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600">確認清空</button>
+              <button onClick={() => setShowClearClassModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeClearClass} className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors">確認清空</button>
             </div>
           </div>
         </div>
       )}
 
       {showClearAllModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600">
-            <h3 className="text-lg font-bold text-red-600 mb-2">危險：清空全校課表？</h3>
-            <p className="text-gray-600 text-sm mb-6">您即將刪除雲端資料庫中所有班級的課表！此操作無法復原。</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600 transition-colors">
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">危險：清空全校課表？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">您即將刪除雲端資料庫中所有班級的課表！此操作無法復原。</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowClearAllModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700">確定全部刪除</button>
+              <button onClick={() => setShowClearAllModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors">確定全部刪除</button>
             </div>
           </div>
         </div>
       )}
 
       {showDeleteClassModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold text-red-600 mb-2">確認刪除班級？</h3>
-            <p className="text-gray-600 text-sm mb-6">您即將刪除該班級及其所有排課紀錄。</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 transition-colors">
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">確認刪除班級？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">您即將刪除該班級及其所有排課紀錄。</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => {setShowDeleteClassModal(false); setClassToDelete(null);}} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeDeleteClass} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700">確認刪除</button>
+              <button onClick={() => {setShowDeleteClassModal(false); setClassToDelete(null);}} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeDeleteClass} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors">確認刪除</button>
             </div>
           </div>
         </div>
       )}
 
       {showDeleteAllClassesModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">刪除「所有班級」？</h3>
-            <p className="text-gray-600 text-sm mb-6">此操作將清空系統內所有班級名單與相關課表，且無法復原！</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900 dark:border-slate-100 transition-colors">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">刪除「所有班級」？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">此操作將清空系統內所有班級名單與相關課表，且無法復原！</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowDeleteAllClassesModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeDeleteAllClasses} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-black">確認全部刪除</button>
+              <button onClick={() => setShowDeleteAllClassesModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeDeleteAllClasses} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-bold hover:bg-black dark:hover:bg-slate-200 transition-colors">確認全部刪除</button>
             </div>
           </div>
         </div>
       )}
 
       {showAddTeacherModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">新增教師</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 transition-colors">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-4">新增教師</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">教師姓名</label>
-                <input type="text" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="例: 王小明" />
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">教師姓名</label>
+                <input type="text" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="例: 王小明" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">任教科目</label>
-                <input type="text" value={newTeacherSubject} onChange={e => setNewTeacherSubject(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm" placeholder="例: 數學" />
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">任教科目</label>
+                <input type="text" value={newTeacherSubject} onChange={e => setNewTeacherSubject(e.target.value)} className="w-full border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100" placeholder="例: 數學" />
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setShowAddTeacherModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600">取消</button>
-              <button onClick={handleAddTeacher} disabled={!newTeacherName} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 disabled:opacity-50">確認新增</button>
+              <button onClick={() => setShowAddTeacherModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={handleAddTeacher} disabled={!newTeacherName} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors">確認新增</button>
             </div>
           </div>
         </div>
       )}
 
       {showDeleteTeacherModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold text-red-600 mb-2">確認刪除教師？</h3>
-            <p className="text-gray-600 text-sm mb-6">刪除老師將同步清除其相關排課紀錄。</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 transition-colors">
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">確認刪除教師？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">刪除老師將同步清除其相關排課紀錄。</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => {setShowDeleteTeacherModal(false); setTeacherToDelete(null);}} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeDeleteTeacher} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700">確認刪除</button>
+              <button onClick={() => {setShowDeleteTeacherModal(false); setTeacherToDelete(null);}} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeDeleteTeacher} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700 transition-colors">確認刪除</button>
             </div>
           </div>
         </div>
       )}
 
       {showDeleteAllTeachersModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900">
-            <h3 className="text-lg font-bold text-slate-900 mb-2">刪除「所有教師」？</h3>
-            <p className="text-gray-600 text-sm mb-6">此操作將清空系統內所有教師名單與相關課表，且無法復原！</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900 dark:border-slate-100 transition-colors">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">刪除「所有教師」？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">此操作將清空系統內所有教師名單與相關課表，且無法復原！</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowDeleteAllTeachersModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeDeleteAllTeachers} className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-black">確認全部刪除</button>
+              <button onClick={() => setShowDeleteAllTeachersModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeDeleteAllTeachers} className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-sm font-bold hover:bg-black dark:hover:bg-slate-200 transition-colors">確認全部刪除</button>
             </div>
           </div>
         </div>
       )}
 
       {showDeduplicateModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-green-500">
-            <h3 className="text-lg font-bold text-green-700 mb-2">合併重複教師？</h3>
-            <p className="text-gray-600 text-sm mb-6">系統將掃描同名的教師紀錄並自動合併為一筆，同時更新所有對應的課表與調代課紀錄。</p>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-green-500 transition-colors">
+            <h3 className="text-lg font-bold text-green-700 dark:text-green-400 mb-2">合併重複教師？</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">系統將掃描同名的教師紀錄並自動合併為一筆，同時更新所有對應的課表與調代課紀錄。</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowDeduplicateModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold">取消</button>
-              <button onClick={executeDeduplicateTeachers} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700">確認合併</button>
+              <button onClick={() => setShowDeduplicateModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">取消</button>
+              <button onClick={executeDeduplicateTeachers} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors">確認合併</button>
             </div>
           </div>
         </div>
       )}
 
       {showImportModal && userRole === 'admin' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-purple-700 mb-2 flex items-center gap-2"><Upload className="w-5 h-5"/> 批次匯入 CSV 課表</h3>
-            <div className="text-sm text-gray-600 space-y-2 mb-4 bg-purple-50 p-3 rounded-xl border border-purple-100">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-md w-full p-6 transition-colors">
+            <h3 className="text-lg font-bold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-2"><Upload className="w-5 h-5"/> 批次匯入 CSV 課表</h3>
+            <div className="text-sm text-slate-600 dark:text-slate-300 space-y-2 mb-4 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800">
               <p>請上傳包含 <strong>5 個直欄</strong>的 CSV 檔 (標題依序為：班級, 老師, 科目, 星期, 節次)</p>
             </div>
             
@@ -2435,11 +2488,11 @@ export default function App() {
                   e.target.value = ''; 
                 }
               }}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer"
+              className="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 dark:file:bg-purple-900/30 dark:file:text-purple-400 hover:file:bg-purple-200 dark:hover:file:bg-purple-800/40 cursor-pointer"
             />
             
             <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setShowImportModal(false)} className="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600">關閉</button>
+              <button onClick={() => setShowImportModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">關閉</button>
             </div>
           </div>
         </div>
