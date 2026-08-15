@@ -1691,13 +1691,13 @@ export default function App() {
           <Info className="w-3.5 h-3.5" /> 若課表較大，可雙指縮放或左右滑動查看
         </div>
         
-        {/* 調整 min-w 讓手機版縮放更合理 */}
-        <table className="w-full text-sm text-center border-collapse min-w-[480px] md:min-w-[800px]">
+        {/* 使用 calc() 實現完美的數學對齊比例：寬度 = 100% + 第一欄寬度 (4.5rem) */}
+        <table className="table-fixed w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
-              <th className="border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-2 md:p-3 w-16 md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
+              <th className="border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
               {DAYS.map((day, idx) => (
-                <th key={idx} className="border-b dark:border-slate-700 p-2 md:p-3 font-semibold w-[18%] text-xs md:text-sm">{day}</th>
+                <th key={idx} className="border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
               ))}
             </tr>
           </thead>
@@ -1706,7 +1706,7 @@ export default function App() {
               if (period.isBreak) {
                 return (
                   <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
-                    <td className="border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50">
+                    <td className="border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28">
                       <div>{period.name}</div>
                       <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
                     </td>
@@ -1717,7 +1717,7 @@ export default function App() {
 
               return (
                 <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                  <td className="border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200">
+                  <td className="border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28">
                     <div>{period.name}</div>
                     <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
                   </td>
@@ -1731,7 +1731,7 @@ export default function App() {
                         <td key={dayIdx} className="border-b dark:border-slate-700 border-l dark:border-l-slate-700 border-gray-100 p-1 relative h-16 md:h-20 bg-blue-50/20 dark:bg-blue-900/10">
                           <input
                             type="text" tabIndex={tIndex}
-                            className="w-full h-full p-1 md:p-2 text-center text-xs md:text-sm font-bold border-2 border-dashed border-gray-300 dark:border-slate-600 focus:border-solid focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:bg-yellow-50 dark:focus:bg-slate-700 rounded-xl text-blue-800 dark:text-blue-300 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent"
+                            className="w-full h-full p-1 md:p-2 text-center text-[10px] md:text-sm font-bold border-2 border-dashed border-gray-300 dark:border-slate-600 focus:border-solid focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:bg-yellow-50 dark:focus:bg-slate-700 rounded-xl text-blue-800 dark:text-blue-300 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent"
                             placeholder="例: 國文 溫盛傑"
                             value={editData[`${dayNum}_${period.id}`] !== undefined ? editData[`${dayNum}_${period.id}`] : ''}
                             onChange={(e) => setEditData({...editData, [`${dayNum}_${period.id}`]: e.target.value})}
@@ -1762,7 +1762,7 @@ export default function App() {
                                 setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
                               }
                             }}
-                            className={`h-full flex flex-col items-center justify-center rounded-xl p-1 md:p-2 
+                            className={`h-full flex flex-col items-center justify-center rounded-xl p-1 md:p-2 overflow-hidden
                               ${period.isTutor 
                                 ? 'bg-[#fffdf2] dark:bg-amber-900/20 border border-[#fbe9a1] dark:border-amber-700/50' 
                                 : 'bg-[#f4f7fe] dark:bg-blue-900/20 border border-[#d6e4ff] dark:border-blue-800/50'} 
@@ -1772,25 +1772,23 @@ export default function App() {
                           >
                             {viewMode === 'class' ? (
                               <>
-                                {/* 科目：深藍色 */}
-                                <div className="font-bold text-[#1e3a8a] dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10">{lesson.subject}</div>
-                                {/* 教師名稱與圖示：亮藍色、無底色 */}
+                                <div className="font-bold text-[#1e3a8a] dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight w-full truncate">{lesson.subject}</div>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
-                                  className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-400 bg-transparent px-1 py-0.5 rounded transition flex items-center gap-0.5 md:gap-1 hover:underline relative z-10"
+                                  className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-400 bg-transparent px-0.5 py-0.5 rounded transition flex items-center justify-center gap-0.5 md:gap-1 hover:underline relative z-10 leading-none w-full max-w-full"
                                 >
-                                  <User className="w-2.5 h-2.5 md:w-3 md:h-3" /> {teacherName}
+                                  <User className="w-2.5 h-2.5 md:w-3 md:h-3 shrink-0" /> <span className="truncate">{teacherName}</span>
                                 </button>
                               </>
                             ) : (
                               <>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
-                                  className="font-bold text-[#1e3a8a] dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:underline cursor-pointer relative z-10"
+                                  className="font-bold text-[#1e3a8a] dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:underline cursor-pointer relative z-10 leading-tight w-full truncate"
                                 >
                                   {className}
                                 </button>
-                                <div className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-400 relative z-10">{lesson.subject}</div>
+                                <div className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-400 relative z-10 leading-none w-full truncate">{lesson.subject}</div>
                               </>
                             )}
                             
