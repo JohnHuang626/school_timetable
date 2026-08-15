@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -152,6 +152,11 @@ export default function App() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
+
+  const [swipeIndicator, setSwipeIndicator] = useState({ show: false, direction: '', text: '' });
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     const handleFirebaseError = (err) => {
@@ -854,6 +859,99 @@ export default function App() {
     body += `嘉新國中教務處 敬上`;
     return `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    setSwipeIndicator({ show: false, direction: '', text: '' });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!scrollContainerRef.current) return;
+    
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const diffX = touchStartX.current - currentX;
+    const diffY = touchStartY.current - currentY;
+
+    // 如果上下滑動的角度大於左右滑動，就不處理 (避免在看課表上下滑動時誤觸)
+    if (Math.abs(diffY) > Math.abs(diffX)) return;
+
+    const container = scrollContainerRef.current;
+    const isAtRightEdge = Math.abs(container.scrollWidth - container.clientWidth - container.scrollLeft) < 5;
+    const isAtLeftEdge = container.scrollLeft === 0;
+
+    // 滑動距離閾值，大於此值才顯示提示
+    const threshold = 60;
+
+    if (isAtRightEdge && diffX > threshold) {
+      // 到了最右邊還繼續往左滑 (想看下一個)
+      let nextName = '';
+      if (viewMode === 'class' && classes.length > 0) {
+        const currentIndex = classes.findIndex(c => c.id === selectedClass);
+        const nextIndex = (currentIndex + 1) % classes.length;
+        nextName = classes[nextIndex].name;
+      } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+        const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+        const nextIndex = (currentIndex + 1) % sortedTeachers.length;
+        nextName = sortedTeachers[nextIndex].name;
+      }
+      setSwipeIndicator({ show: true, direction: 'right', text: `切換至 ${nextName}` });
+      
+    } else if (isAtLeftEdge && diffX < -threshold) {
+      // 到了最左邊還繼續往右滑 (想看上一個)
+      let prevName = '';
+      if (viewMode === 'class' && classes.length > 0) {
+        const currentIndex = classes.findIndex(c => c.id === selectedClass);
+        const prevIndex = (currentIndex - 1 + classes.length) % classes.length;
+        prevName = classes[prevIndex].name;
+      } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+        const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+        const prevIndex = (currentIndex - 1 + sortedTeachers.length) % sortedTeachers.length;
+        prevName = sortedTeachers[prevIndex].name;
+      }
+      setSwipeIndicator({ show: true, direction: 'left', text: `切換至 ${prevName}` });
+      
+    } else {
+      setSwipeIndicator({ show: false, direction: '', text: '' });
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!scrollContainerRef.current || !swipeIndicator.show) return;
+
+    const currentX = e.changedTouches[0]?.clientX || touchStartX.current; // 防止有些瀏覽器取不到 changedTouches
+    const diffX = touchStartX.current - currentX;
+    
+    // 確認最終放開時，滑動距離有超過觸發切換的閾值 (100px)
+    if (swipeIndicator.direction === 'right' && diffX > 100) {
+      if (viewMode === 'class' && classes.length > 0) {
+        const currentIndex = classes.findIndex(c => c.id === selectedClass);
+        const nextIndex = (currentIndex + 1) % classes.length;
+        setSelectedClass(classes[nextIndex].id);
+      } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+        const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+        const nextIndex = (currentIndex + 1) % sortedTeachers.length;
+        setSelectedTeacher(sortedTeachers[nextIndex].id);
+      }
+      // 切換後讓捲軸回到最左邊
+      scrollContainerRef.current.scrollLeft = 0;
+    } 
+    else if (swipeIndicator.direction === 'left' && diffX < -100) {
+      if (viewMode === 'class' && classes.length > 0) {
+        const currentIndex = classes.findIndex(c => c.id === selectedClass);
+        const prevIndex = (currentIndex - 1 + classes.length) % classes.length;
+        setSelectedClass(classes[prevIndex].id);
+      } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+        const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+        const prevIndex = (currentIndex - 1 + sortedTeachers.length) % sortedTeachers.length;
+        setSelectedTeacher(sortedTeachers[prevIndex].id);
+      }
+    }
+    
+    setSwipeIndicator({ show: false, direction: '', text: '' });
+  };
+
 
   const FeeReportModal = () => {
     const reportData = useMemo(() => {
@@ -1685,17 +1783,35 @@ export default function App() {
 
   const renderSchedule = () => {
     return (
-      <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200">
+      <div 
+        ref={scrollContainerRef}
+        className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200 relative hide-scrollbar"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {/* 滑動切換提示區塊 */}
+        {swipeIndicator.show && (
+          <div className={`absolute top-0 bottom-0 ${swipeIndicator.direction === 'right' ? 'right-0 bg-gradient-to-l' : 'left-0 bg-gradient-to-r'} from-indigo-500/20 to-transparent w-24 z-20 pointer-events-none flex items-center justify-center transition-opacity animate-in fade-in`}>
+            <div className={`bg-indigo-600 text-white text-[10px] font-bold px-2 py-4 rounded-full shadow-lg flex flex-col items-center gap-1 ${swipeIndicator.direction === 'right' ? '-ml-8' : '-mr-8'}`}>
+              {swipeIndicator.direction === 'left' && <ArrowLeft className="w-4 h-4 animate-bounce-x" />}
+              <span className="writing-vertical-lr tracking-widest">{swipeIndicator.text}</span>
+              {swipeIndicator.direction === 'right' && <ArrowLeft className="w-4 h-4 animate-bounce-x rotate-180" />}
+            </div>
+          </div>
+        )}
+
         {/* 手機版提示 */}
-        <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
-          <Info className="w-3.5 h-3.5" /> 若課表較大，可雙指縮放或左右滑動查看
+        <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50 sticky left-0 z-10 w-[calc(100%+4.5rem)]">
+          <Info className="w-3.5 h-3.5" /> 左右滑動查看，滑到底大力拉可切換班級
         </div>
         
         {/* 使用 calc() 實現完美的數學對齊比例：寬度 = 100% + 第一欄寬度 (4.5rem) */}
         <table className="table-fixed w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
-              <th className="border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
+              <th className="border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">節次 / 時間</th>
               {DAYS.map((day, idx) => (
                 <th key={idx} className="border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
               ))}
@@ -1706,7 +1822,7 @@ export default function App() {
               if (period.isBreak) {
                 return (
                   <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
-                    <td className="border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28">
+                    <td className="border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28 sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
                       <div>{period.name}</div>
                       <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
                     </td>
@@ -1717,7 +1833,7 @@ export default function App() {
 
               return (
                 <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                  <td className="border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28">
+                  <td className="border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28 sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] dark:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.5)]">
                     <div>{period.name}</div>
                     <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
                   </td>
@@ -1810,6 +1926,18 @@ export default function App() {
             })}
           </tbody>
         </table>
+        
+        {/* CSS for vertical text and custom scrollbar hiding */}
+        <style dangerouslySetInnerHTML={{__html: `
+          .writing-vertical-lr { writing-mode: vertical-lr; }
+          .animate-bounce-x { animation: bounce-x 1s infinite; }
+          @keyframes bounce-x {
+            0%, 100% { transform: translateX(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+            50% { transform: translateX(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+          }
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}} />
       </div>
     );
   };
