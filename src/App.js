@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -44,11 +44,17 @@ export default function App() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   
+  // 用於觸控滑動偵測的 Refs
+  const touchStartX = useRef(null);
+  const touchEndX = useRef(null);
+  // 設定至少滑動 50px 才觸發切換
+  const minSwipeDistance = 50;
+  
   useEffect(() => {
     // 1. 設定瀏覽器分頁標題
     document.title = "嘉新課表與調代課系統";
 
-    // 2. 加入 viewport 設定，確保手機版能雙指縮放，且不鎖死比例
+    // 2. 加入 viewport 設定，防止手機版將整個網頁強制縮小，讓使用者能維持正常字體大小並左右滑動
     let viewportMeta = document.querySelector('meta[name="viewport"]');
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
@@ -57,7 +63,7 @@ export default function App() {
     }
     viewportMeta.content = "width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes";
 
-    // 3. 動態產生並注入 Favicon
+    // 3. 動態產生並注入 Favicon (學校圖示)
     const setFavicon = () => {
       const emoji = '🏫';
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">${emoji}</text></svg>`;
@@ -1684,20 +1690,79 @@ export default function App() {
   };
 
   const renderSchedule = () => {
+    // 實作滑動切換班級/老師的邏輯
+    const handleTouchStart = (e) => {
+      touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchMove = (e) => {
+      touchEndX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = () => {
+      if (!touchStartX.current || !touchEndX.current) return;
+
+      const swipeDistance = touchStartX.current - touchEndX.current;
+      const isLeftSwipe = swipeDistance > minSwipeDistance;
+      const isRightSwipe = swipeDistance < -minSwipeDistance;
+
+      if (isLeftSwipe || isRightSwipe) {
+        if (viewMode === 'class' && classes.length > 0) {
+          const currentIndex = classes.findIndex(c => c.id === selectedClass);
+          if (currentIndex !== -1) {
+            let nextIndex;
+            if (isLeftSwipe) {
+              // 往左滑 (下一班)
+              nextIndex = currentIndex === classes.length - 1 ? 0 : currentIndex + 1;
+            } else {
+              // 往右滑 (上一班)
+              nextIndex = currentIndex === 0 ? classes.length - 1 : currentIndex - 1;
+            }
+            setSelectedClass(classes[nextIndex].id);
+          }
+        } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+          const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+          if (currentIndex !== -1) {
+            let nextIndex;
+            if (isLeftSwipe) {
+              // 往左滑 (下一位老師)
+              nextIndex = currentIndex === sortedTeachers.length - 1 ? 0 : currentIndex + 1;
+            } else {
+              // 往右滑 (上一位老師)
+              nextIndex = currentIndex === 0 ? sortedTeachers.length - 1 : currentIndex - 1;
+            }
+            setSelectedTeacher(sortedTeachers[nextIndex].id);
+          }
+        }
+      }
+
+      // 重置 ref
+      touchStartX.current = null;
+      touchEndX.current = null;
+    };
+
     return (
-      <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200">
+      <div 
+        className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200 touch-pan-y"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         
         {/* 手機版直式滿版提示 */}
-        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
-          <Info className="w-3.5 h-3.5 shrink-0" /> 手機直立時為滿版顯示，將手機轉橫即可查看左側的「節次與時間」
+        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 shrink-0" /> <span className="font-bold text-blue-600 dark:text-blue-400">左右滑動</span> 可切換上下個{viewMode === 'class' ? '班級' : '老師'}
+          </div>
         </div>
         
-        <table className="table-fixed w-full sm:w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
+        <table className="table-fixed w-full sm:min-w-[800px] text-sm text-center border-collapse select-none">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
+              {/* 透過 hidden sm:table-cell 在手機直立時隱藏此列 */}
               <th className="hidden sm:table-cell border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
               {DAYS.map((day, idx) => (
-                <th key={idx} className="w-1/5 sm:w-auto border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
+                <th key={idx} className="w-1/5 sm:w-[18%] border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
               ))}
             </tr>
           </thead>
@@ -1706,7 +1771,7 @@ export default function App() {
               if (period.isBreak) {
                 return (
                   <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
-                    <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28">
+                    <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words">
                       <div>{period.name}</div>
                       <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
                     </td>
@@ -1717,7 +1782,7 @@ export default function App() {
 
               return (
                 <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                  <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28">
+                  <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words">
                     <div>{period.name}</div>
                     <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
                   </td>
@@ -2112,7 +2177,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* ===== Modals (保留全部 Modal，僅更換深色模式顏色) ===== */}
+      {/* ===== Modals ===== */}
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
