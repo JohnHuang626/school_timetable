@@ -1686,19 +1686,18 @@ export default function App() {
   const renderSchedule = () => {
     return (
       <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200">
-        
-        {/* 手機版直式滿版提示 */}
-        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
-          <Info className="w-3.5 h-3.5 shrink-0" /> 手機直立時為滿版模式，將手機轉橫即可顯示左側的「節次與時間」
+        {/* 手機版提示 */}
+        <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
+          <Info className="w-3.5 h-3.5" /> 若課表較大，可雙指縮放或左右滑動查看
         </div>
         
-        <table className="table-fixed w-full sm:min-w-[800px] text-sm text-center border-collapse">
+        {/* 使用 calc() 實現完美的數學對齊比例：寬度 = 100% + 第一欄寬度 (4.5rem) */}
+        <table className="table-fixed w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
-              {/* 透過 hidden sm:table-cell 在手機直立時隱藏此列 */}
-              <th className="hidden sm:table-cell border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
+              <th className="border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
               {DAYS.map((day, idx) => (
-                <th key={idx} className="w-1/5 sm:w-[18%] border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
+                <th key={idx} className="border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
               ))}
             </tr>
           </thead>
@@ -1707,7 +1706,7 @@ export default function App() {
               if (period.isBreak) {
                 return (
                   <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
-                    <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words">
+                    <td className="border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28">
                       <div>{period.name}</div>
                       <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
                     </td>
@@ -1718,7 +1717,7 @@ export default function App() {
 
               return (
                 <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                  <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words">
+                  <td className="border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28">
                     <div>{period.name}</div>
                     <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
                   </td>
@@ -1815,8 +1814,46 @@ export default function App() {
     );
   };
 
+  if (!isDataLoaded) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 gap-4 transition-colors duration-200">
+        <Database className="w-10 h-10 animate-bounce" />
+        <h2 className="text-lg font-bold">正在連線至嘉新國中雲端資料庫...</h2>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden transition-colors duration-200">
+      <style>
+        {`
+          @media print {
+            @page { 
+              margin: 0 !important; 
+              size: auto;
+            }
+            html, body { 
+              margin: 0 !important; 
+              padding: 10mm !important; 
+              height: auto !important; 
+              min-height: 0 !important;
+              overflow: visible !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              background-color: white !important;
+            }
+            .min-h-screen {
+              min-height: 0 !important;
+              height: auto !important;
+              background-color: white !important;
+            }
+            * {
+               color: black !important;
+            }
+          }
+        `}
+      </style>
+      
       {/* ===== Header Start ===== */}
       <header className="bg-blue-700 dark:bg-slate-900 text-white shadow-md sticky top-0 z-30 print:hidden transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-3 md:px-4 py-3 flex flex-wrap items-center gap-2">
@@ -2074,6 +2111,386 @@ export default function App() {
         )}
         </div>
       </main>
+
+      {/* ===== Modals (保留全部 Modal，僅更換深色模式顏色) ===== */}
+      {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
+      {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
+
+      {showPwdModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+            <div className="bg-amber-500 dark:bg-amber-600 p-4 flex justify-between items-center text-white">
+              <h3 className="text-lg font-bold flex items-center gap-2"><Key className="w-5 h-5" /> 修改個人密碼</h3>
+              <button onClick={() => setShowPwdModal(false)} className="hover:bg-amber-600 dark:hover:bg-amber-700 p-1 rounded-full"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">原密碼</label>
+                <input type="password" value={pwdOld} onChange={e=>setPwdOld(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm focus:ring-amber-500 bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="預設為 1234" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">新密碼</label>
+                <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm focus:ring-amber-500 bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="至少 4 碼" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">確認新密碼</label>
+                <input type="password" value={pwdConfirm} onChange={e=>setPwdConfirm(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm focus:ring-amber-500 bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="再次輸入新密碼" />
+              </div>
+
+              {pwdMessage.text && (
+                <div className={`p-3 rounded-lg text-xs font-bold text-center ${pwdMessage.type === 'success' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'}`}>
+                  {pwdMessage.text}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowPwdModal(false)} className="px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+                <button onClick={handleChangePassword} className="px-5 py-2 bg-amber-600 dark:bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-700 dark:hover:bg-amber-600 shadow-sm transition-colors">確認修改</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+            <div className="bg-blue-700 dark:bg-blue-900 p-4 flex justify-between items-center text-white">
+              <h3 className="text-lg font-bold flex items-center gap-2"><Lock className="w-5 h-5" /> 教師登入</h3>
+              <button onClick={() => {setShowLoginModal(false); setAdminPassword(''); setTeacherPassword('');}} className="hover:bg-blue-800 dark:hover:bg-blue-800 p-1 rounded-full"><X className="w-5 h-5"/></button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3 transition-colors">
+                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2"><User className="w-4 h-4 text-blue-600 dark:text-blue-400"/> 教師身分登入</h4>
+                <select value={selectedLoginTeacher} onChange={e=>setSelectedLoginTeacher(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-blue-500 transition-colors">
+                  {enhancedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
+                </select>
+                <div className="flex gap-2">
+                  <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-white transition-colors" />
+                  <button onClick={handleTeacherLogin} className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm transition-colors">登入</button>
+                </div>
+              </div>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-gray-200 dark:border-slate-600"></div>
+                <span className="flex-shrink-0 mx-4 text-gray-400 dark:text-gray-500 text-xs">管理員專區</span>
+                <div className="flex-grow border-t border-gray-200 dark:border-slate-600"></div>
+              </div>
+
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/50 space-y-3 transition-colors">
+                <h4 className="font-bold text-amber-900 dark:text-amber-300 text-sm flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-500"/> 管理者登入</h4>
+                <div className="flex gap-2">
+                  <input type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdminLogin()} className="flex-1 border border-amber-300 dark:border-amber-700/50 rounded-lg p-2 text-sm focus:ring-amber-500 bg-white dark:bg-slate-800 dark:text-white transition-colors" placeholder="請輸入管理者密碼" />
+                  <button onClick={handleAdminLogin} className="px-4 py-2 bg-amber-600 dark:bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-700 dark:hover:bg-amber-600 shadow-sm transition-colors">登入</button>
+                </div>
+              </div>
+
+              <div className="text-center pt-2">
+                <button onClick={() => {setShowLoginModal(false); setAdminPassword(''); setTeacherPassword('');}} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 underline">取消並以訪客繼續</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddClassModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700 transition-colors">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">新增班級</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">班級代號 (例: 705)</label>
+                <input type="text" value={newClassId} onChange={e => setNewClassId(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="705" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">顯示名稱 (例: 7年05班)</label>
+                <input type="text" value={newClassName} onChange={e => setNewClassName(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="7年05班" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setShowAddClassModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={handleAddClass} disabled={!newClassId || !newClassName} className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg text-sm font-bold hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50 transition-colors">確認新增</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearClassModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-orange-500 transition-colors">
+            <h3 className="text-lg font-bold text-orange-600 dark:text-orange-400 mb-2">確認清空本班課表？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">您即將清空本班在雲端上的所有課表資料。</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowClearClassModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeClearClass} className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-colors">確認清空</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClearAllModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-600 dark:border-red-500 transition-colors">
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">危險：清空全校課表？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">您即將刪除雲端資料庫中所有班級的課表！此操作無法復原。</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowClearAllModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeClearAll} className="px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors">確定全部刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteClassModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-500 transition-colors">
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">確認刪除班級？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">您即將刪除該班級及其所有排課紀錄。</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => {setShowDeleteClassModal(false); setClassToDelete(null);}} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeDeleteClass} className="px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors">確認刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteAllClassesModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900 dark:border-slate-500 transition-colors">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">刪除「所有班級」？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">此操作將清空系統內所有班級名單與相關課表，且無法復原！</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeleteAllClassesModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeDeleteAllClasses} className="px-4 py-2 bg-slate-900 dark:bg-slate-600 text-white rounded-lg text-sm font-bold hover:bg-black dark:hover:bg-slate-500 transition-colors">確認全部刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddTeacherModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700 transition-colors">
+            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-4">新增教師</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">教師姓名</label>
+                <input type="text" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="例: 王小明" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">任教科目</label>
+                <input type="text" value={newTeacherSubject} onChange={e => setNewTeacherSubject(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-700 dark:text-white transition-colors" placeholder="例: 數學" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setShowAddTeacherModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={handleAddTeacher} disabled={!newTeacherName} className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors">確認新增</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteTeacherModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-red-500 transition-colors">
+            <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">確認刪除教師？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">刪除老師將同步清除其相關排課紀錄。</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => {setShowDeleteTeacherModal(false); setTeacherToDelete(null);}} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeDeleteTeacher} className="px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-colors">確認刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteAllTeachersModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-slate-900 dark:border-slate-500 transition-colors">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-2">刪除「所有教師」？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">此操作將清空系統內所有教師名單與相關課表，且無法復原！</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeleteAllTeachersModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeDeleteAllTeachers} className="px-4 py-2 bg-slate-900 dark:bg-slate-600 text-white rounded-lg text-sm font-bold hover:bg-black dark:hover:bg-slate-500 transition-colors">確認全部刪除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeduplicateModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-sm w-full p-6 border-t-4 border-green-500 transition-colors">
+            <h3 className="text-lg font-bold text-green-700 dark:text-green-400 mb-2">合併重複教師？</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">系統將掃描同名的教師紀錄並自動合併為一筆，同時更新所有對應的課表與調代課紀錄。</p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowDeduplicateModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">取消</button>
+              <button onClick={executeDeduplicateTeachers} className="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-700 dark:hover:bg-green-600 transition-colors">確認合併</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImportModal && userRole === 'admin' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 transition-colors">
+            <h3 className="text-lg font-bold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-2"><Upload className="w-5 h-5"/> 批次匯入 CSV 課表</h3>
+            <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2 mb-4 bg-purple-50 dark:bg-purple-900/20 p-3 rounded-xl border border-purple-100 dark:border-purple-800/50 transition-colors">
+              <p>請上傳包含 <strong>5 個直欄</strong>的 CSV 檔 (標題依序為：班級, 老師, 科目, 星期, 節次)</p>
+            </div>
+            
+            <input 
+              type="file" 
+              accept=".csv"
+              onChange={async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                  showMessage('error', '❌ 匯入失敗：請上傳 .csv 逗號分隔檔，不支援 Excel (.xls或.xlsx) 檔案');
+                  e.target.value = '';
+                  return;
+                }
+                
+                showMessage('success', '🔄 正在讀取並準備寫入雲端 (請勿關閉網頁)...');
+                
+                const readFileAs = (f, encoding) => new Promise((resolve) => {
+                  const r = new FileReader();
+                  r.onload = evt => resolve(evt.target.result);
+                  r.readAsText(f, encoding);
+                });
+
+                try {
+                  let text = await readFileAs(file, 'utf-8');
+                  
+                  if (text.includes('')) {
+                    console.log("偵測到可能的 Big5 編碼，系統正在自動切換解碼器...");
+                    text = await readFileAs(file, 'big5');
+                  }
+                  
+                  if (text.includes('\x00')) {
+                     showMessage('error', '❌ 匯入失敗：這似乎是 Excel 檔 (.xlsx) 直接修改副檔名造成的。請在 Excel 中打開該檔案，並點選「另存新檔 -> CSV (逗號分隔)」來產生標準檔案。');
+                     setShowImportModal(false);
+                     e.target.value = '';
+                     return;
+                  }
+                  
+                  const lines = text.split('\n').filter(line => line.trim() !== '');
+                  if (lines.length < 2) {
+                    showMessage('error', '❌ 檔案內容空白或格式不符 (至少需要包含標題列與一筆資料)');
+                    return;
+                  }
+                  
+                  let newClassesMap = new Map();
+                  let newTeachersMap = new Map();
+                  let parsedLessons = [];
+
+                  classes.forEach(c => newClassesMap.set(c.name.trim(), c));
+                  teachers.forEach(t => newTeachersMap.set(t.name.trim(), t));
+                  
+                  let skippedCount = 0;
+
+                  for (let i = 1; i < lines.length; i++) {
+                    const row = lines[i].split(',').map(item => item.trim());
+                    if (row.length < 5) continue;
+                    
+                    const [cNameRaw, tNameRaw, subject, dStr, pStr] = row;
+                    const cName = cNameRaw.trim();
+                    const tName = tNameRaw.trim();
+                    if (!cName || !tName || !dStr || !pStr) continue;
+
+                    const isInvalidTeacherName = (name) => {
+                      if (/^\s*\d+\s*$/.test(name)) return true;
+                      if (/^\d{2,4}\s*(?:\(\d+\)|-\d+)$/.test(name)) return true; 
+                      if (/^[^\u4e00-\u9fa5a-zA-Z]+$/.test(name)) return true;
+                      return false;
+                    };
+
+                    if (isInvalidTeacherName(tName)) {
+                      console.warn(`已自動跳過異常教師名稱資料列 - [${tName}]`);
+                      skippedCount++;
+                      continue; 
+                    }
+
+                    let cId = cName.replace(/\D/g, ''); 
+                    if(!cId) cId = `C_${Math.floor(Math.random()*1000)}`;
+                    if (!newClassesMap.has(cName)) {
+                      newClassesMap.set(cName, { id: cId, name: cName });
+                    } else {
+                      cId = newClassesMap.get(cName).id;
+                    }
+
+                    let tId = '';
+                    if (!newTeachersMap.has(tName)) {
+                      tId = `T${Math.floor(Math.random()*10000)}`;
+                      newTeachersMap.set(tName, { id: tId, name: tName, subject: subject, password: '1234' });
+                    } else {
+                      tId = newTeachersMap.get(tName).id;
+                    }
+
+                    const day = parseInt(dStr);
+                    const period = isNaN(parseInt(pStr)) ? pStr : parseInt(pStr);
+                    const lessonId = `IMP_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`;
+                    
+                    parsedLessons.push({
+                      id: lessonId,
+                      classId: cId,
+                      teacherId: tId,
+                      subject: subject,
+                      day: day,
+                      period: period
+                    });
+                  }
+                  
+                  if (parsedLessons.length > 0) {
+                        const batches = [];
+                        let currentBatch = writeBatch(db);
+                        let opCount = 0;
+
+                        const pushToBatch = (ref, data) => {
+                            currentBatch.set(ref, data);
+                            opCount++;
+                            if (opCount >= 450) {
+                                batches.push(currentBatch.commit());
+                                currentBatch = writeBatch(db);
+                                opCount = 0;
+                            }
+                        };
+
+                        parsedLessons.forEach(l => pushToBatch(doc(db, 'lessons', l.id), l));
+                        newClassesMap.forEach(c => pushToBatch(doc(db, 'classes', c.id), c));
+                        newTeachersMap.forEach(t => pushToBatch(doc(db, 'teachers', t.id), t));
+                        
+                        if (opCount > 0) {
+                            batches.push(currentBatch.commit());
+                        }
+                        
+                        await Promise.all(batches);
+                        setShowImportModal(false);
+                        const skipMsg = skippedCount > 0 ? ` (已自動過濾 ${skippedCount} 筆異常格式)` : '';
+                        showMessage('success', `✅ 成功匯入 ${parsedLessons.length} 筆課表至雲端！${skipMsg}`);
+                  } else {
+                     showMessage('error', '❌ 解析失敗，請確認上傳的檔案包含正確的排課資料');
+                  }
+                } catch(err) {
+                    console.error("Batch Import Error:", err);
+                    if (err.code === 'permission-denied') {
+                      showMessage('error', '❌ 寫入失敗：權限不足，請檢查 Firebase Security Rules！');
+                    } else if (err.code === 'resource-exhausted') {
+                      showMessage('error', '❌ 寫入失敗：超過 Firebase 每日免費寫入配額！');
+                    } else {
+                      showMessage('error', '❌ 處理檔案時發生錯誤：' + err.message);
+                    }
+                } finally {
+                  e.target.value = ''; 
+                }
+              }}
+              className="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-100 dark:file:bg-purple-900/30 file:text-purple-700 dark:file:text-purple-400 hover:file:bg-purple-200 dark:hover:file:bg-purple-900/50 cursor-pointer transition-colors"
+            />
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setShowImportModal(false)} className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">關閉</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
