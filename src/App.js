@@ -1889,31 +1889,43 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans pb-10 print:bg-white print:text-black print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden transition-colors duration-200">
+      {/* 專屬列印樣式：強制黑白、覆蓋所有深色模式 */}
       <style>
         {`
           @media print {
-            @page { 
-              margin: 0 !important; 
-              size: auto;
-            }
+            /* 強制列印時所有元素都變成白底黑字，無視 Tailwind 的 dark 模式 */
             html, body { 
               margin: 0 !important; 
               padding: 10mm !important; 
               height: auto !important; 
               min-height: 0 !important;
               overflow: visible !important;
+              background-color: white !important;
+              color: black !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
-              background-color: white !important;
             }
             .min-h-screen {
               min-height: 0 !important;
               height: auto !important;
               background-color: white !important;
             }
+            /* 強制所有文字變成黑色 */
             * {
                color: black !important;
+               text-shadow: none !important;
+            }
+            /* 強制表格的底色變回白色，線條變為淺灰色 */
+            table, th, td {
+               background-color: white !important;
+               border-color: #e5e7eb !important; 
+            }
+            /* 針對有特殊顏色的區塊，列印時拿掉背景色，只留邊框 (如果需要的話) */
+            .bg-blue-50, .bg-amber-50, .bg-slate-50,
+            .dark\\:bg-blue-900\\/20, .dark\\:bg-amber-900\\/20, .dark\\:bg-slate-800\\/30,
+            .dark\\:bg-slate-800, .dark\\:bg-slate-900\\/50, .dark\\:bg-slate-800\\/80 {
+                background-color: white !important;
             }
           }
         `}
