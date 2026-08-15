@@ -1686,18 +1686,18 @@ export default function App() {
   const renderSchedule = () => {
     return (
       <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200">
-        {/* 手機版提示 */}
-        <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
-          <Info className="w-3.5 h-3.5" /> 若課表較大，可雙指縮放或左右滑動查看
+        
+        {/* 手機版直式滿版提示 */}
+        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
+          <Info className="w-3.5 h-3.5 shrink-0" /> 手機直立時為滿版顯示，將手機轉橫即可查看左側的「節次與時間」
         </div>
         
-        {/* 使用 calc() 實現完美的數學對齊比例：寬度 = 100% + 第一欄寬度 (4.5rem) */}
-        <table className="table-fixed w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
+        <table className="table-fixed w-full sm:w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
-              <th className="border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
+              <th className="hidden sm:table-cell border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
               {DAYS.map((day, idx) => (
-                <th key={idx} className="border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
+                <th key={idx} className="w-1/5 sm:w-auto border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
               ))}
             </tr>
           </thead>
@@ -1706,7 +1706,7 @@ export default function App() {
               if (period.isBreak) {
                 return (
                   <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
-                    <td className="border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28">
+                    <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words w-[4.5rem] md:w-28">
                       <div>{period.name}</div>
                       <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
                     </td>
@@ -1717,7 +1717,7 @@ export default function App() {
 
               return (
                 <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                  <td className="border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28">
+                  <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words w-[4.5rem] md:w-28">
                     <div>{period.name}</div>
                     <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
                   </td>
@@ -2491,6 +2491,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {showFeeReportModal && userRole === 'admin' && <FeeReportModal />}
     </div>
   );
 }
