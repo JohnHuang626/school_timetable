@@ -209,10 +209,23 @@ export default function App() {
     setTimeout(() => setImportStatus({ type: '', message: '' }), 6000);
   };
 
+  // 完美列印修復：強制暫時關閉深色模式再列印
   const handlePrint = () => {
+    const wasDark = document.documentElement.classList.contains('dark');
+    if (wasDark) {
+      document.documentElement.classList.remove('dark'); // 暫時移除深色
+    }
+    
     setTimeout(() => {
       window.print();
-    }, 300);
+      
+      // 等待列印視窗關閉後，如果原本是深色，再把深色加回來
+      if (wasDark) {
+        setTimeout(() => {
+          document.documentElement.classList.add('dark');
+        }, 100); 
+      }
+    }, 100); // 給瀏覽器一點時間渲染淺色畫面
   };
 
   const initializeDatabase = async () => {
