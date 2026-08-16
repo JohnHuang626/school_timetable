@@ -137,6 +137,7 @@ export default function App() {
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   
   const [isEditing, setIsEditing] = useState(false);
+  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 }); // 新增：用於記錄滑動起始點
   const [editData, setEditData] = useState({});
   const [showAddClassModal, setShowAddClassModal] = useState(false);
   const [newClassId, setNewClassId] = useState('');
@@ -1706,85 +1707,85 @@ export default function App() {
     );
   };
 
+  const switchToNext = () => {
+    if (viewMode === 'class' && classes.length > 0) {
+      const currentIndex = classes.findIndex(c => c.id === selectedClass);
+      const nextIndex = (currentIndex + 1) % classes.length;
+      setSelectedClass(classes[nextIndex].id);
+    } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+      const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+      const nextIndex = (currentIndex + 1) % sortedTeachers.length;
+      setSelectedTeacher(sortedTeachers[nextIndex].id);
+    }
+  };
+
+  const switchToPrev = () => {
+    if (viewMode === 'class' && classes.length > 0) {
+      const currentIndex = classes.findIndex(c => c.id === selectedClass);
+      const prevIndex = (currentIndex - 1 + classes.length) % classes.length;
+      setSelectedClass(classes[prevIndex].id);
+    } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
+      const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
+      const prevIndex = (currentIndex - 1 + sortedTeachers.length) % sortedTeachers.length;
+      setSelectedTeacher(sortedTeachers[prevIndex].id);
+    }
+  };
+
+  const onTouchStart = (e) => {
+    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+  };
+
+  const onTouchEnd = (e) => {
+    if (!touchStart.x || !touchStart.y) return;
+    if (isEditing) return; // 編輯模式下不觸發切換，避免干擾輸入
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const deltaX = touchStart.x - touchEndX;
+    const deltaY = touchStart.y - touchEndY;
+
+    // 如果 Y 軸滑動大於 X 軸，表示用戶主要是上下滾動，不觸發左右切換
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+    const container = e.currentTarget;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    
+    // 計算是否在邊界，容許 2px 誤差 (這是解決與原生左右捲動衝突的關鍵)
+    const atLeftEdge = scrollLeft <= 2;
+    const atRightEdge = scrollLeft + clientWidth >= scrollWidth - 2;
+
+    // 滑動距離必須大於 50px 才算有效的 swipe
+    if (deltaX > 50 && atRightEdge) {
+      // 向左滑動，且已經到了表格最右邊，切換到下一個
+      switchToNext();
+    } else if (deltaX < -50 && atLeftEdge) {
+      // 向右滑動，且已經到了表格最左邊，切換到上一個
+      switchToPrev();
+    }
+    
+    setTouchStart({ x: 0, y: 0 });
+  };
+
   const renderSchedule = () => {
     return (
-      <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200">
+      <div 
+        className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         
         {/* 手機版直式滿版提示 */}
-        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
-          <Info className="w-3.5 h-3.5 shrink-0" /> 手機直立時為滿版模式，將手機轉橫即可顯示左側的「節次與時間」
+        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 shrink-0" /> 手機直立滿版，轉橫可看時間
+          </div>
+          <div className="flex items-center gap-1 opacity-70 font-medium">
+             <ArrowRightLeft className="w-3 h-3" /> 滑動切換
+          </div>
         </div>
         
-        {/* 重點修復：使用完全響應式的 table-fixed 搭配 w-full */}
-        <table className="table-fixed w-full text-sm text-center border-collapse">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
-              {/* 透過 hidden sm:table-cell 在手機直立時隱藏此列 */}
-              <th className="hidden sm:table-cell border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
-              {DAYS.map((day, idx) => (
-                <th key={idx} className="border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm w-1/5 sm:w-auto">{day}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {PERIODS.map((period, periodIdx) => {
-              if (period.isBreak) {
-                return (
-                  <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
-                    <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words">
-                      <div>{period.name}</div>
-                      <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
-                    </td>
-                    <td colSpan={5} className="border-b dark:border-slate-700 p-2 text-slate-400 dark:text-slate-500 tracking-widest text-[10px] md:text-xs">休息時間</td>
-                  </tr>
-                );
-              }
-
-              return (
-                <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
-                  <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words">
-                    <div>{period.name}</div>
-                    <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
-                  </td>
-                  
-                  {DAYS.map((_, dayIdx) => {
-                    const dayNum = dayIdx + 1;
-                    
-                    if (isEditing && viewMode === 'class' && userRole === 'admin') {
-                      const tIndex = dayIdx * 100 + periodIdx + 1; 
-                      return (
-                        <td key={dayIdx} className="border-b dark:border-slate-700 border-l dark:border-l-slate-700 border-gray-100 p-1 relative h-16 md:h-20 bg-blue-50/20 dark:bg-blue-900/10">
-                          <input
-                            type="text" tabIndex={tIndex}
-                            className="w-full h-full p-1 md:p-2 text-center text-[10px] md:text-sm font-bold border-2 border-dashed border-gray-300 dark:border-slate-600 focus:border-solid focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:bg-yellow-50 dark:focus:bg-slate-700 rounded-xl text-blue-800 dark:text-blue-300 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent"
-                            placeholder="例: 國文 溫盛傑"
-                            value={editData[`${dayNum}_${period.id}`] !== undefined ? editData[`${dayNum}_${period.id}`] : ''}
-                            onChange={(e) => setEditData({...editData, [`${dayNum}_${period.id}`]: e.target.value})}
-                          />
-                        </td>
-                      );
-                    }
-
-                    const lesson = lessons.find(l => {
-                      if (viewMode === 'class') return l.classId === selectedClass && l.day === dayNum && l.period === period.id;
-                      if (viewMode === 'teacher') return l.teacherId === selectedTeacher && l.day === dayNum && l.period === period.id;
-                      return false;
-                    });
-
-                    const teacherName = lesson ? (teachers.find(t => t.id === lesson.teacherId)?.name || '未知') : '';
-                    const className = lesson ? (classes.find(c => c.id === lesson.classId)?.name || lesson.classId) : '';
-                    
-                    const isMyOwnSchedule = userRole === 'teacher' && viewMode === 'teacher' && selectedTeacher === loggedTeacherId;
-                    const isAdmin = userRole === 'admin';
-                    const canInitiateRequest = isMyOwnSchedule || isAdmin;
-
-                    return (
-                      <td key={dayIdx} className="border-b dark:border-slate-700 border-l dark:border-l-slate-700 border-gray-100 p-1 md:p-2 relative h-16 md:h-20 group transition-colors duration-200">
-                        {lesson ? (
-                          <div 
-                            onClick={(e) => { 
-                              if(canInitiateRequest && !isEditing) {
-                                setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
+        <table className="table-fixed w-full sm:w-[calc(100%+4.5rem)] md:w-full md:min-w-[800px] text-sm text-center border-collapse">
                               }
                             }}
                             className={`h-full flex flex-col items-center justify-center rounded-xl p-1 md:p-2 overflow-hidden
