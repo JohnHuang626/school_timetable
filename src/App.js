@@ -74,7 +74,7 @@ export default function App() {
     
     setFavicon();
 
-    // 4. 初始化深色模式：優先讀取 localStorage，若無則預設為 false (淺色)
+    // 4. 初始化深色模式：加入 LocalStorage 記憶與強制淺色預設
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('theme-preference');
       if (savedMode === 'dark') {
@@ -1694,80 +1694,82 @@ export default function App() {
   };
 
   const renderSchedule = () => {
-    // 處理手勢滑動邏輯 (Touch swipe detection)
-    const [touchStart, setTouchStart] = useState(null);
-    const [touchEnd, setTouchEnd] = useState(null);
-
-    const minSwipeDistance = 50; 
-
-    const onTouchStart = (e) => {
-      setTouchEnd(null); 
-      setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
-    };
-
-    const onTouchMove = (e) => setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
-
-    const onTouchEnd = () => {
-      if (!touchStart || !touchEnd) return;
-      const distanceX = touchStart.x - touchEnd.x;
-      const distanceY = Math.abs(touchStart.y - touchEnd.y);
-      
-      if (distanceY > 30) return;
-
-      const isLeftSwipe = distanceX > minSwipeDistance;
-      const isRightSwipe = distanceX < -minSwipeDistance;
-
-      if (isLeftSwipe || isRightSwipe) {
-        if (viewMode === 'class' && classes.length > 0) {
-          const currentIndex = classes.findIndex(c => c.id === selectedClass);
-          let newIndex = currentIndex;
-          if (isLeftSwipe) { 
-            newIndex = currentIndex < classes.length - 1 ? currentIndex + 1 : 0;
-          } else if (isRightSwipe) { 
-            newIndex = currentIndex > 0 ? currentIndex - 1 : classes.length - 1;
-          }
-          if (newIndex !== currentIndex) {
-            setSelectedClass(classes[newIndex].id);
-            setIsEditing(false);
-          }
-        } else if (viewMode === 'teacher' && sortedTeachers.length > 0) {
-          const currentIndex = sortedTeachers.findIndex(t => t.id === selectedTeacher);
-          let newIndex = currentIndex;
-          if (isLeftSwipe) { 
-            newIndex = currentIndex < sortedTeachers.length - 1 ? currentIndex + 1 : 0;
-          } else if (isRightSwipe) { 
-            newIndex = currentIndex > 0 ? currentIndex - 1 : sortedTeachers.length - 1;
-          }
-          if (newIndex !== currentIndex) {
-            setSelectedTeacher(sortedTeachers[newIndex].id);
-          }
-        }
-      }
-    };
-
     return (
-      <div 
-        className="overflow-hidden bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200"
-        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
-      >
-        <div className="md:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50 transition-colors duration-200">
-          <div className="flex items-center gap-1.5"><Info className="w-3.5 h-3.5 shrink-0" /> <span>直立滿版。轉橫看時間。</span></div>
-          <div className="flex items-center gap-1 shrink-0 text-[10px] bg-slate-200/50 dark:bg-slate-700 px-2 py-0.5 rounded-full"><ArrowRightLeft className="w-3 h-3"/> 左右滑動切換</div>
+      <div className="overflow-x-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 transition-colors duration-200">
+        
+        {/* 手機版直式滿版提示 */}
+        <div className="sm:hidden text-xs text-slate-500 dark:text-slate-400 px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-800/50">
+          <Info className="w-3.5 h-3.5 shrink-0" /> 手機直立時為滿版模式，將手機轉橫即可顯示左側的「節次與時間」
         </div>
         
-        {/* 移除不必要的 x 軸 overflow 與固定寬度，讓表格自然貼合 */}
-        <div className="w-full">
-          {/* 在大螢幕 (sm 以上，包含手機橫放) 時，寬度 100%。手機直立時 (sm 以下) 使用 calc 完美滿版 */}
-          <table className="table-fixed w-[calc(100%+4.5rem)] sm:w-full text-sm text-center border-collapse">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
-                {/* 透過 hidden sm:table-cell 在手機直立時隱藏此列 */}
-                <th className="hidden sm:table-cell border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
-                {DAYS.map((day, idx) => (
-                  <th key={idx} className="w-1/5 sm:w-[18%] border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm">{day}</th>
-                ))}
-              </tr>
-            </thead>
+        {/* 重點修復：使用完全響應式的 table-fixed 搭配 w-full */}
+        <table className="table-fixed w-full text-sm text-center border-collapse">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors duration-200">
+              {/* 透過 hidden sm:table-cell 在手機直立時隱藏此列 */}
+              <th className="hidden sm:table-cell border-b dark:border-slate-700 border-r dark:border-r-slate-700 p-1 md:p-3 w-[4.5rem] md:w-28 font-semibold bg-slate-100 dark:bg-slate-800 text-[11px] md:text-sm">節次 / 時間</th>
+              {DAYS.map((day, idx) => (
+                <th key={idx} className="border-b dark:border-slate-700 p-1 md:p-3 font-semibold text-xs md:text-sm w-1/5 sm:w-auto">{day}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {PERIODS.map((period, periodIdx) => {
+              if (period.isBreak) {
+                return (
+                  <tr key="break" className="bg-slate-50/50 dark:bg-slate-800/30 transition-colors duration-200">
+                    <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-b-slate-700 p-1 md:p-2 font-medium text-slate-500 dark:text-slate-400 text-[10px] md:text-xs bg-slate-100/50 dark:bg-slate-800/50 break-words">
+                      <div>{period.name}</div>
+                      <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500">{period.time}</div>
+                    </td>
+                    <td colSpan={5} className="border-b dark:border-slate-700 p-2 text-slate-400 dark:text-slate-500 tracking-widest text-[10px] md:text-xs">休息時間</td>
+                  </tr>
+                );
+              }
+
+              return (
+                <tr key={period.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-150">
+                  <td className="hidden sm:table-cell border-r dark:border-r-slate-700 border-b dark:border-slate-700 p-1 md:p-2 bg-slate-50/80 dark:bg-slate-800/80 text-[10px] md:text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors duration-200 break-words">
+                    <div>{period.name}</div>
+                    <div className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{period.time}</div>
+                  </td>
+                  
+                  {DAYS.map((_, dayIdx) => {
+                    const dayNum = dayIdx + 1;
+                    
+                    if (isEditing && viewMode === 'class' && userRole === 'admin') {
+                      const tIndex = dayIdx * 100 + periodIdx + 1; 
+                      return (
+                        <td key={dayIdx} className="border-b dark:border-slate-700 border-l dark:border-l-slate-700 border-gray-100 p-1 relative h-16 md:h-20 bg-blue-50/20 dark:bg-blue-900/10">
+                          <input
+                            type="text" tabIndex={tIndex}
+                            className="w-full h-full p-1 md:p-2 text-center text-[10px] md:text-sm font-bold border-2 border-dashed border-gray-300 dark:border-slate-600 focus:border-solid focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:bg-yellow-50 dark:focus:bg-slate-700 rounded-xl text-blue-800 dark:text-blue-300 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 bg-transparent"
+                            placeholder="例: 國文 溫盛傑"
+                            value={editData[`${dayNum}_${period.id}`] !== undefined ? editData[`${dayNum}_${period.id}`] : ''}
+                            onChange={(e) => setEditData({...editData, [`${dayNum}_${period.id}`]: e.target.value})}
+                          />
+                        </td>
+                      );
+                    }
+
+                    const lesson = lessons.find(l => {
+                      if (viewMode === 'class') return l.classId === selectedClass && l.day === dayNum && l.period === period.id;
+                      if (viewMode === 'teacher') return l.teacherId === selectedTeacher && l.day === dayNum && l.period === period.id;
+                      return false;
+                    });
+
+                    const teacherName = lesson ? (teachers.find(t => t.id === lesson.teacherId)?.name || '未知') : '';
+                    const className = lesson ? (classes.find(c => c.id === lesson.classId)?.name || lesson.classId) : '';
+                    
+                    const isMyOwnSchedule = userRole === 'teacher' && viewMode === 'teacher' && selectedTeacher === loggedTeacherId;
+                    const isAdmin = userRole === 'admin';
+                    const canInitiateRequest = isMyOwnSchedule || isAdmin;
+
+                    return (
+                      <td key={dayIdx} className="border-b dark:border-slate-700 border-l dark:border-l-slate-700 border-gray-100 p-1 md:p-2 relative h-16 md:h-20 group transition-colors duration-200">
+                        {lesson ? (
+                          <div 
+                            onClick={(e) => { 
                               if(canInitiateRequest && !isEditing) {
                                 setRequestTargetLesson({lesson, day: dayNum, period: period.id, requesterId: lesson.teacherId}); 
                               }
@@ -1823,15 +1825,6 @@ export default function App() {
       </div>
     );
   };
-
-  if (!isDataLoaded) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 gap-4 transition-colors duration-200">
-        <Database className="w-10 h-10 animate-bounce" />
-        <h2 className="text-lg font-bold">正在連線至嘉新國中雲端資料庫...</h2>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans pb-10 print:bg-white print:pb-0 print:min-h-0 print:h-auto overflow-x-hidden transition-colors duration-200">
@@ -2122,7 +2115,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* ===== Modals (保留全部 Modal，僅更換深色模式顏色) ===== */}
+      {/* ===== Modals ===== */}
       {requestTargetLesson && <RequestModal data={requestTargetLesson} onClose={() => setRequestTargetLesson(null)} />}
       {editRequestData && <RequestModal editReq={editRequestData} onClose={() => setEditRequestData(null)} />}
 
