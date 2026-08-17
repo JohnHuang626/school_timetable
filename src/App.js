@@ -811,10 +811,12 @@ export default function App() {
     const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '未知班級';
     const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
 
+    const getSubReasonText = (r) => r === '是' ? '公假/學校排代' : (r === '否' ? '私人自行排代' : r);
+
     const subject = `【嘉新國中】調代課通知 - ${requester}老師`;
     let body = `各位老師好：\n\n`;
     body += `老師 ${requester} 提出了調代課申請，詳細內容如下：\n`;
-    body += `- 申請類型：${req.type === 'sub' ? `請假代課 (${req.reason})` : '跨週調課'}\n\n`;
+    body += `- 申請類型：${req.type === 'sub' ? `請假代課 (${getSubReasonText(req.reason)})` : '跨週調課'}\n\n`;
     
     if (req.type === 'sub') {
       body += `【原授課/代課資訊】\n`;
@@ -848,6 +850,8 @@ export default function App() {
     const subject = `【嘉新國中】調代課通知總表 - ${entityName}${isClass ? '導師' : '老師'} 收`;
     let body = `老師好：\n\n以下為近期與您或貴班相關的調代課異動總表，請查照：\n\n`;
     
+    const getSubReasonText = (r) => r === '是' ? '公假/學校排代' : (r === '否' ? '私人自行排代' : r);
+
     reqsToEmail.forEach((req, idx) => {
       const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
       const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
@@ -860,7 +864,7 @@ export default function App() {
       const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '未知班級';
       const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
 
-      body += `【異動 ${idx + 1}】 ${req.type === 'sub' ? `請假代課 (${req.reason})` : '跨週調課'}\n`;
+      body += `【異動 ${idx + 1}】 ${req.type === 'sub' ? `請假代課 (${getSubReasonText(req.reason)})` : '跨週調課'}\n`;
       if (req.type === 'sub') {
         body += `- 日期：${req.targetDate || '未指定'}\n`;
         body += `- 班級：${className}\n`;
@@ -884,6 +888,7 @@ export default function App() {
       const filtered = requests.filter(r => 
         r.status === 'approved' && 
         r.type === 'sub' && 
+        r.reason === '是' && 
         r.targetDate && r.targetDate.startsWith(feeReportMonth)
       );
       
@@ -991,7 +996,7 @@ export default function App() {
                               <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-b dark:border-slate-700 print:bg-transparent print:border-black transition-colors duration-200">
                                 <th className="p-3 pl-5 font-semibold w-28 whitespace-nowrap print:p-1 print:pl-1">代課日期</th>
                                 <th className="p-3 font-semibold w-24 whitespace-nowrap print:p-1">請假老師</th>
-                                <th className="p-3 font-semibold w-20 whitespace-nowrap print:p-1">假別</th>
+                                <th className="p-3 font-semibold w-20 whitespace-nowrap print:p-1">排代類型</th>
                                 <th className="p-3 font-semibold w-28 whitespace-nowrap print:p-1">授課班級</th>
                                 <th className="p-3 font-semibold whitespace-nowrap print:p-1">代課節次</th>
                               </tr>
@@ -1001,7 +1006,7 @@ export default function App() {
                                 <tr key={i} className="border-b dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/50 print:border-b print:border-slate-300 transition-colors duration-150">
                                   <td className="p-3 pl-5 text-indigo-700 dark:text-indigo-300 font-bold whitespace-nowrap print:p-1 print:pl-1 print:text-black">{det.date}</td>
                                   <td className="p-3 text-slate-700 dark:text-slate-300 font-medium print:p-1">{det.originalTeacher}</td>
-                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0 print:text-[11px]">{det.reason}</span></td>
+                                  <td className="p-3 print:p-1"><span className="text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-300 dark:border-slate-600 shadow-xs print:bg-transparent print:border-none print:shadow-none print:p-0 print:text-[11px]">{det.reason === '是' ? '公假(學校排代)' : det.reason}</span></td>
                                   <td className="p-3 font-bold text-slate-800 dark:text-slate-200 print:p-1 print:text-black">{det.className}</td>
                                   <td className="p-3 text-slate-600 dark:text-slate-400 font-medium print:p-1">{det.periodStr}</td>
                                 </tr>
@@ -1028,11 +1033,13 @@ export default function App() {
 
     const actualRequesterId = editReq ? editReq.requesterId : (data?.requesterId || loggedTeacherId);
 
+    const initReason = editReq ? (['是', '否'].includes(editReq.reason) ? editReq.reason : '否') : '否';
+
     const [requestType, setRequestType] = useState(editReq ? editReq.type : 'sub'); 
     const [targetTeacher, setTargetTeacher] = useState(editReq ? editReq.targetTeacherId : '');
     const [targetLessonId, setTargetLessonId] = useState(editReq ? (editReq.targetLessonId || '') : ''); 
     const [targetSwapDate, setTargetSwapDate] = useState(editReq ? (editReq.targetSwapDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]); 
-    const [reason, setReason] = useState(editReq ? editReq.reason : '事假');
+    const [reason, setReason] = useState(initReason);
     const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : new Date().toISOString().split('T')[0]); 
     const targetClass = classes.find(c => c.id === lesson.classId) || { name: lesson.classId };
 
@@ -1131,11 +1138,10 @@ export default function App() {
             {requestType === 'sub' ? (
               <>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">請假事由</label>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">是否為公假由學校排代 (若為否則為私人代課)</label>
                   <select value={reason} onChange={e => setReason(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2.5 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-blue-500 transition-colors duration-200">
-                    {['事假', '病假', '公假', '差假', '休假', '身心調適假', '喪假', '產假', '公傷假', '其他'].map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
+                    <option value="是">是 (公假，由學校發放代課費)</option>
+                    <option value="否">否 (私人請假，自行處理代課費)</option>
                   </select>
                 </div>
                 <div>
@@ -1585,6 +1591,8 @@ export default function App() {
                   const targetClassName = targetClassObj?.name || '未知班級';
                   const targetLessonTime = targetLesson ? `${DAYS[targetLesson.day-1]} 第 ${targetLesson.period} 節` : '未知';
                   
+                  const getSubReasonText = (r) => r === '是' ? '公假/校排' : (r === '否' ? '私人自理' : r);
+
                   return (
                     <tr key={req.id} className="border-b dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/30 print:border-black transition-colors duration-150">
                       <td className="p-3 font-bold text-slate-800 dark:text-slate-200">
@@ -1604,7 +1612,7 @@ export default function App() {
                       </td>
                       <td className="p-3">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${req.type === 'sub' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300'}`}>
-                          {req.type === 'sub' ? `請假 (${req.reason})` : '調課'}
+                          {req.type === 'sub' ? `請假 (${getSubReasonText(req.reason)})` : '調課'}
                         </span>
                       </td>
                       <td className="p-3 space-y-1">
