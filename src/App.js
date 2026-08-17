@@ -1739,6 +1739,43 @@ export default function App() {
     }
   };
 
+  // 監聽鍵盤左右鍵來切換課表 (電腦版適用)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 1. 如果正在輸入框打字或選擇下拉選單，不要觸發
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+
+      // 2. 如果不是在看課表，或正在「快速編輯」模式，不要觸發
+      if (activeTab !== 'schedule' || isEditing) return;
+
+      // 3. 如果有任何彈出視窗正在顯示，不要觸發
+      const isAnyModalOpen = showLoginModal || showPwdModal || requestTargetLesson || editRequestData || 
+                             showAddClassModal || showDeleteClassModal || showDeleteAllClassesModal || 
+                             showClearClassModal || showClearAllModal || showImportModal || 
+                             showDeleteArchivedModal || showAddTeacherModal || showDeleteTeacherModal || 
+                             showDeleteAllTeachersModal || showDeduplicateModal || showFeeReportModal;
+      if (isAnyModalOpen) return;
+
+      // 4. 判斷按鍵執行切換
+      if (e.key === 'ArrowRight') {
+        switchToNext();
+      } else if (e.key === 'ArrowLeft') {
+        switchToPrev();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    // 元件卸載或重新渲染時移除監聽器
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    activeTab, isEditing, viewMode, classes, sortedTeachers, selectedClass, selectedTeacher, 
+    showLoginModal, showPwdModal, requestTargetLesson, editRequestData, showAddClassModal, 
+    showDeleteClassModal, showDeleteAllClassesModal, showClearClassModal, showClearAllModal, 
+    showImportModal, showDeleteArchivedModal, showAddTeacherModal, showDeleteTeacherModal, 
+    showDeleteAllTeachersModal, showDeduplicateModal, showFeeReportModal
+  ]);
+
   const onTouchStart = (e) => {
     setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
   };
