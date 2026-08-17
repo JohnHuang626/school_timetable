@@ -1867,17 +1867,17 @@ export default function App() {
                             className={`h-full flex flex-col items-center justify-center rounded-xl p-1 md:p-2 overflow-hidden
                               ${period.isTutor 
                                 ? 'bg-[#fffdf2] dark:bg-amber-900/20 border border-[#fbe9a1] dark:border-amber-700/50' 
-                                : 'bg-[#f4f7fe] dark:bg-blue-900/20 border border-[#d6e4ff] dark:border-blue-800/50'} 
+                                : 'bg-[#f4f7fe] dark:bg-blue-900/40 border border-[#d6e4ff] dark:border-blue-700/50'} 
                               shadow-xs relative transition-all group-hover:shadow-md
-                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:border-indigo-200 dark:hover:border-indigo-700 ring-2 ring-transparent hover:ring-indigo-200 dark:hover:ring-indigo-700' : ''}
+                              ${canInitiateRequest && !isEditing ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-800/40 hover:border-indigo-200 dark:hover:border-indigo-600 ring-2 ring-transparent hover:ring-indigo-200 dark:hover:ring-indigo-600' : ''}
                             `}
                           >
                             {viewMode === 'class' ? (
                               <>
-                                <div className="font-bold text-[#1e3a8a] dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight w-full truncate">{lesson.subject}</div>
+                                <div className="font-bold text-[#1e3a8a] dark:text-blue-100 text-[11px] md:text-sm mb-0.5 md:mb-1 relative z-10 leading-tight w-full truncate">{lesson.subject}</div>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToTeacher(lesson.teacherId); }} 
-                                  className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-400 bg-transparent px-0.5 py-0.5 rounded transition flex items-center justify-center gap-0.5 md:gap-1 hover:underline relative z-10 leading-none w-full max-w-full"
+                                  className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-300 bg-transparent px-0.5 py-0.5 rounded transition flex items-center justify-center gap-0.5 md:gap-1 hover:underline relative z-10 leading-none w-full max-w-full"
                                 >
                                   <User className="w-2.5 h-2.5 md:w-3 md:h-3 shrink-0" /> <span className="truncate">{teacherName}</span>
                                 </button>
@@ -1886,16 +1886,16 @@ export default function App() {
                               <>
                                 <button 
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); jumpToClass(lesson.classId); }} 
-                                  className="font-bold text-[#1e3a8a] dark:text-blue-300 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:underline cursor-pointer relative z-10 leading-tight w-full truncate"
+                                  className="font-bold text-[#1e3a8a] dark:text-blue-100 text-[11px] md:text-sm mb-0.5 md:mb-1 hover:underline cursor-pointer relative z-10 leading-tight w-full truncate"
                                 >
                                   {className}
                                 </button>
-                                <div className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-400 relative z-10 leading-none w-full truncate">{lesson.subject}</div>
+                                <div className="text-[10px] md:text-xs text-[#2563eb] dark:text-blue-300 relative z-10 leading-none w-full truncate">{lesson.subject}</div>
                               </>
                             )}
                             
                             {(canInitiateRequest && !isEditing) && (
-                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/90 dark:bg-amber-700/90' : 'bg-indigo-600/90 dark:bg-indigo-700/90'} text-white rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0`}>
+                              <div className={`absolute inset-0 ${isAdmin ? 'bg-amber-600/90 dark:bg-amber-600/95' : 'bg-indigo-600/90 dark:bg-indigo-600/95'} text-white rounded-xl opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center font-bold text-xs transition-opacity pointer-events-none z-0`}>
                                 <span className="text-[10px] md:text-sm mb-0.5">✨</span>
                                 <span className="text-center leading-tight px-1 text-[10px] md:text-xs">{isAdmin ? '管理員代為申請' : '點擊空白處申請調代'}</span>
                               </div>
