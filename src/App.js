@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun } from 'lucide-react';
+import { Search, User, Users, BookOpen, Calendar, CheckCircle2, Edit, Plus, Trash2, AlertTriangle, X, Lock, Unlock, Key, ShieldAlert, Eraser, ArrowRightLeft, FileText, Printer, Check, Clock, Mail, Upload, Save, Database, ArrowLeft, Archive, Info, Moon, Sun, Download } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot, writeBatch } from 'firebase/firestore';
@@ -1392,6 +1392,69 @@ export default function App() {
       }
     };
 
+    const handleExportCSV = () => {
+      if (displayRequests.length === 0) {
+        showMessage('error', '❌ 目前沒有資料可供匯出');
+        return;
+      }
+
+      // 準備 CSV 標題
+      const headers = ['申請單號', '申請時間', '申請類型', '假別/事由', '申請人', '原授課班級', '原授課科目', '原授課星期', '原授課節次', '我方代/調課日期', '對象老師', '對方換課日期', '對方換課班級', '對方換課科目', '對方換課星期', '對方換課節次', '目前狀態'];
+
+      // 準備每一列的資料
+      const rows = displayRequests.map(req => {
+        const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
+        const target = teachers.find(t => t.id === req.targetTeacherId)?.name || '未知';
+
+        const lesson = lessons.find(l => l.id === req.lessonId);
+        const className = classes.find(c => c.id === lesson?.classId)?.name || '未知班級';
+
+        const targetLesson = lessons.find(l => l.id === req.targetLessonId);
+        const targetClassName = classes.find(c => c.id === targetLesson?.classId)?.name || '無';
+
+        const typeStr = req.type === 'sub' ? '請假代課' : '跨週調課';
+        const statusStr = req.status === 'approved' ? '已核准' : (req.status === 'rejected' ? '已退回' : '審核中');
+        const reasonStr = req.reason || '';
+
+        return [
+          req.id,
+          new Date(req.timestamp).toLocaleString('zh-TW', { hour12: false }),
+          typeStr,
+          reasonStr,
+          requester,
+          className,
+          lesson?.subject || '',
+          lesson ? DAYS[lesson.day - 1] : '',
+          lesson?.period || '',
+          req.targetDate || '',
+          target,
+          req.targetSwapDate || '',
+          targetClassName,
+          targetLesson?.subject || '',
+          targetLesson ? DAYS[targetLesson.day - 1] : '',
+          targetLesson?.period || '',
+          statusStr
+        ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(','); // 處理欄位內容中的逗號與引號
+      });
+
+      // 組合 CSV 內容並加入 BOM 確保 Excel 中文不亂碼
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `嘉新調代課紀錄備份_${dateStr}.csv`;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      showMessage('success', `✅ 已成功匯出 ${displayRequests.length} 筆紀錄為 CSV 檔案！`);
+    };
+
     return (
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden transition-colors duration-200">
         <div className="hidden print:block text-center py-6 border-b-2 border-black mb-4">
@@ -1552,6 +1615,13 @@ export default function App() {
                 
                 {isArchiveView && (
                   <>
+                    <button 
+                      onClick={handleExportCSV} 
+                      className="px-2.5 py-1 bg-emerald-600 dark:bg-emerald-500 text-white rounded-md text-xs font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 flex items-center gap-1 shadow-xs transition-colors ml-1 print:hidden"
+                      title="將目前列表的資料匯出為 CSV 備份"
+                    >
+                      <Download className="w-3.5 h-3.5"/> 匯出 CSV
+                    </button>
                     <button 
                       onClick={() => setShowFeeReportModal(true)} 
                       className="px-2.5 py-1 bg-indigo-600 dark:bg-indigo-500 text-white rounded-md text-xs font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 flex items-center gap-1 shadow-xs transition-colors ml-1 print:hidden"
