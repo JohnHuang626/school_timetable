@@ -133,6 +133,7 @@ export default function App() {
   const [filterPrintClassId, setFilterPrintClassId] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterRequestType, setFilterRequestType] = useState(''); // 新增：類型篩選狀態
 
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
   
@@ -1269,6 +1270,11 @@ export default function App() {
       });
     }
 
+    // 新增：調代課類型過濾邏輯
+    if (filterRequestType) {
+      displayRequests = displayRequests.filter(r => r.type === filterRequestType);
+    }
+
     const handleAction = async (id, newStatus) => {
       try {
         await updateDoc(doc(db, 'requests', id), { status: newStatus });
@@ -1357,6 +1363,7 @@ export default function App() {
       setFilterPrintClassId('');
       setFilterStartDate('');
       setFilterEndDate('');
+      setFilterRequestType(''); // 新增：重置類型篩選
     };
 
     const executeDeleteArchived = async () => {
@@ -1408,7 +1415,7 @@ export default function App() {
             >
               <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400"/> 
               <span className="group-hover:underline">
-                {filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate
+                {filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate || filterRequestType
                   ? `篩選檢視中 (點擊此處返回)` 
                   : (isPublicView ? '🌍 全校最新調代課動態' : (isArchiveView ? '歷史歸檔紀錄' : (userRole === 'admin' ? '全校調代課審核與紀錄中心' : '我的調代課申請紀錄')))}
               </span>
@@ -1436,6 +1443,17 @@ export default function App() {
               />
             </div>
             
+            {/* 新增：調代課類型下拉選單 */}
+            <select 
+               value={filterRequestType} 
+               onChange={(e) => setFilterRequestType(e.target.value)} 
+               className="bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-sm text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 focus:ring-blue-500 font-medium shadow-xs transition-colors duration-200"
+            >
+               <option value="">-- 類型 (全部) --</option>
+               <option value="sub">請假代課</option>
+               <option value="swap">跨週調課</option>
+            </select>
+
             <select 
                value={filterPrintClassId} 
                onChange={(e) => setFilterPrintClassId(e.target.value)} 
@@ -1454,7 +1472,7 @@ export default function App() {
                {teachers.map(t => <option key={t.id} value={t.id}>篩選：{t.name} 老師</option>)}
             </select>
 
-            {(filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate) && (
+            {(filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate || filterRequestType) && (
               <button 
                 onClick={resetFilters} 
                 className="px-3 py-2 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-bold hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors"
@@ -1468,7 +1486,7 @@ export default function App() {
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   {isArchiveView 
                     ? `目前列表歸檔: ${displayRequests.length}張`
-                    : (filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate ? `目前列表待審: ${currentPendingCount}張` : `全校待審: ${currentPendingCount}張`)
+                    : (filterTeacherId || filterPrintClassId || filterStartDate || filterEndDate || filterRequestType ? `目前列表待審: ${currentPendingCount}張` : `全校待審: ${currentPendingCount}張`)
                   }
                 </span>
                 
@@ -1970,6 +1988,7 @@ export default function App() {
               setFilterPrintClassId('');
               setFilterStartDate('');
               setFilterEndDate('');
+              setFilterRequestType(''); // 新增：切換首頁時清除類型篩選
             }}
             title="點擊返回首頁"
           >
@@ -2007,6 +2026,7 @@ export default function App() {
                       setFilterPrintClassId('');
                       setFilterStartDate('');
                       setFilterEndDate('');
+                      setFilterRequestType(''); // 新增
                     }}
                     className={`hidden sm:block px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
                   >
@@ -2020,6 +2040,7 @@ export default function App() {
                       setFilterPrintClassId('');
                       setFilterStartDate('');
                       setFilterEndDate('');
+                      setFilterRequestType(''); // 新增
                     }}
                     className={`px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium relative transition ${activeTab === 'requests' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
                   >
@@ -2038,6 +2059,7 @@ export default function App() {
                       setFilterPrintClassId('');
                       setFilterStartDate('');
                       setFilterEndDate('');
+                      setFilterRequestType(''); // 新增
                     }}
                     className={`hidden md:block px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
                   >
