@@ -117,7 +117,7 @@ export default function App() {
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
-  const [teacherSortMode, setTeacherSortMode] = useState('default');
+  const [teacherSortMode, setTeacherSortMode] = useState('subject'); // 修改這裡：預設改為 subject
   
   const [userRole, setUserRole] = useState('guest'); 
   const [loggedTeacherId, setLoggedTeacherId] = useState(null); 
@@ -793,7 +793,17 @@ export default function App() {
     if (teacherSortMode === 'name') {
       list.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { collation: 'stroke' }));
     } else if (teacherSortMode === 'subject') {
-      list.sort((a, b) => (a.displaySubject || '').localeCompare(b.displaySubject || '', 'zh-TW'));
+      list.sort((a, b) => {
+        let indexA = SUBJECT_PRIORITY.findIndex(p => (a.displaySubject || '').includes(p));
+        let indexB = SUBJECT_PRIORITY.findIndex(p => (b.displaySubject || '').includes(p));
+        indexA = indexA === -1 ? 999 : indexA;
+        indexB = indexB === -1 ? 999 : indexB;
+        
+        if (indexA !== indexB) {
+          return indexA - indexB;
+        }
+        return a.name.localeCompare(b.name, 'zh-TW', { collation: 'stroke' });
+      });
     }
     return list;
   }, [enhancedTeachers, teacherSortMode]);
@@ -1134,20 +1144,7 @@ export default function App() {
             <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3 transition-colors">
               <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2"><User className="w-4 h-4 text-blue-600 dark:text-blue-400"/> 教師身分登入</h4>
               <select value={selectedLoginTeacher} onChange={e=>setSelectedLoginTeacher(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-blue-500 transition-colors">
-                {[...enhancedTeachers]
-                  .sort((a, b) => {
-                    let indexA = SUBJECT_PRIORITY.findIndex(p => (a.displaySubject || '').includes(p));
-                    let indexB = SUBJECT_PRIORITY.findIndex(p => (b.displaySubject || '').includes(p));
-                    indexA = indexA === -1 ? 999 : indexA;
-                    indexB = indexB === -1 ? 999 : indexB;
-                    
-                    if (indexA !== indexB) {
-                      return indexA - indexB;
-                    }
-                    return a.name.localeCompare(b.name, 'zh-TW', { collation: 'stroke' });
-                  })
-                  .map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)
-                }
+                {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
               </select>
               <div className="flex gap-2">
                 <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-white transition-colors" />
