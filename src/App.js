@@ -2133,7 +2133,7 @@ export default function App() {
                       setFilterEndDate('');
                       setFilterRequestType(''); // 新增
                     }}
-                    className={`hidden sm:block px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
+                    className={`px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${activeTab === 'public_requests' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
                   >
                     🌍 全校動態
                   </button>
@@ -2166,7 +2166,7 @@ export default function App() {
                       setFilterEndDate('');
                       setFilterRequestType(''); // 新增
                     }}
-                    className={`hidden md:block px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
+                    className={`px-2 py-1.5 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${activeTab === 'archive' ? 'bg-blue-800 dark:bg-slate-800 text-white shadow-inner border border-blue-900 dark:border-slate-700' : 'text-blue-100 dark:text-slate-300 hover:bg-blue-600 dark:hover:bg-slate-700'}`}
                   >
                     🗂️ 歷史歸檔
                   </button>
