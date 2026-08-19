@@ -189,7 +189,7 @@ export default function App() {
     const unsubTeachers = onSnapshot(collection(db, 'teachers'), (snapshot) => {
       const data = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
       setTeachers(data);
-      if (data.length > 0 && !selectedLoginTeacher) setSelectedLoginTeacher(data[0].id);
+      // 移除這裡基於原始(未排序)資料的預設指派，改由下方的 sortedTeachers useEffect 統一處理
     }, handleFirebaseError);
 
     const unsubLessons = onSnapshot(collection(db, 'lessons'), (snapshot) => {
@@ -759,8 +759,11 @@ export default function App() {
     }
   };
 
-  // ★ 修改2：更新科目的優先順序（您要求的順序排前面）
-  const SUBJECT_PRIORITY = ['國文', '英文', '數學', '自然', '地理', '歷史', '公民', '英語', '理化', '生物', '地球科學'];
+  // ★ 更新科目的完整優先順序（包含體育、輔導、童軍等後續科目）
+  const SUBJECT_PRIORITY = [
+    '國文', '英文', '英語', '數學', '自然', '理化', '生物', '地球科學', '地理', '歷史', '公民', 
+    '體育', '輔導', '童軍', '資訊', '音樂', '家政', '彈英', '彈數', '本土語', '視覺藝術', '表演藝術', '生活科技', '社團'
+  ];
 
   const enhancedTeachers = useMemo(() => {
     return teachers.map(t => {
@@ -824,6 +827,13 @@ export default function App() {
       setSelectedTeacher(sortedTeachers[0].id);
     }
   }, [sortedTeachers, selectedTeacher]);
+
+  // ★ 新增這段：確保登入視窗的預設老師，是抓取「排序後名單 (sortedTeachers)」的第一位
+  useEffect(() => {
+    if (sortedTeachers.length > 0 && (!selectedLoginTeacher || !sortedTeachers.find(t => t.id === selectedLoginTeacher))) {
+      setSelectedLoginTeacher(sortedTeachers[0].id);
+    }
+  }, [sortedTeachers, selectedLoginTeacher]);
 
   const getSingleEmailUrl = (req) => {
     const requester = teachers.find(t => t.id === req.requesterId)?.name || '未知';
