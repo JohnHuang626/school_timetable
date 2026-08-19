@@ -767,7 +767,8 @@ export default function App() {
       let displaySubject = t.subject || '無';
       
       if (tLessons.length > 0) {
-        const uniqueSubjects = [...new Set(tLessons.map(l => l.subject))];
+        // 在收集科目時，自動過濾掉星號
+        const uniqueSubjects = [...new Set(tLessons.map(l => l.subject.replace(/\*/g, '').trim()))];
         if (uniqueSubjects.length > 1) {
           uniqueSubjects.sort((a, b) => {
             let indexA = SUBJECT_PRIORITY.findIndex(p => a.includes(p));
@@ -777,10 +778,13 @@ export default function App() {
             return indexA - indexB;
           });
         }
-        displaySubject = uniqueSubjects[0];
+        displaySubject = uniqueSubjects[0] || displaySubject;
       }
       
-      return { ...t, displaySubject };
+      // 同時清除名字中可能夾帶的星號
+      const cleanName = t.name.replace(/\*/g, '').trim();
+      
+      return { ...t, name: cleanName, displaySubject: displaySubject.replace(/\*/g, '').trim() };
     });
   }, [teachers, lessons]);
 
