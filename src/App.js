@@ -117,7 +117,7 @@ export default function App() {
   
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
-  const [teacherSortMode, setTeacherSortMode] = useState('default');
+  const [teacherSortMode, setTeacherSortMode] = useState('subject'); // ★ 修改1：預設為依科目排序
   
   const [userRole, setUserRole] = useState('guest'); 
   const [loggedTeacherId, setLoggedTeacherId] = useState(null); 
@@ -759,7 +759,8 @@ export default function App() {
     }
   };
 
-  const SUBJECT_PRIORITY = ['國文', '英文', '英語', '數學', '自然', '理化', '生物', '地球科學', '地理', '歷史', '公民'];
+  // ★ 修改2：更新科目的優先順序（您要求的順序排前面）
+  const SUBJECT_PRIORITY = ['國文', '英文', '數學', '自然', '地理', '歷史', '公民', '英語', '理化', '生物', '地球科學'];
 
   const enhancedTeachers = useMemo(() => {
     return teachers.map(t => {
@@ -793,7 +794,21 @@ export default function App() {
     if (teacherSortMode === 'name') {
       list.sort((a, b) => a.name.localeCompare(b.name, 'zh-TW', { collation: 'stroke' }));
     } else if (teacherSortMode === 'subject') {
-      list.sort((a, b) => (a.displaySubject || '').localeCompare(b.displaySubject || '', 'zh-TW'));
+      // 依自訂科目順序排序
+      list.sort((a, b) => {
+        let indexA = SUBJECT_PRIORITY.findIndex(p => (a.displaySubject || '').includes(p));
+        let indexB = SUBJECT_PRIORITY.findIndex(p => (b.displaySubject || '').includes(p));
+        
+        // 如果找不到該科目，將索引設為 999 (排在最後面)
+        indexA = indexA === -1 ? 999 : indexA;
+        indexB = indexB === -1 ? 999 : indexB;
+        
+        if (indexA !== indexB) {
+          return indexA - indexB;
+        }
+        // 若科目相同，則依照名字筆畫排序
+        return a.name.localeCompare(b.name, 'zh-TW', { collation: 'stroke' });
+      });
     }
     return list;
   }, [enhancedTeachers, teacherSortMode]);
@@ -2365,8 +2380,9 @@ export default function App() {
             <div className="p-6 space-y-6">
               <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3 transition-colors">
                 <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2"><User className="w-4 h-4 text-blue-600 dark:text-blue-400"/> 教師身分登入</h4>
+                {/* ★ 修改3：將此處原本的 enhancedTeachers 改成 sortedTeachers，使其強制套用科目排序 */}
                 <select value={selectedLoginTeacher} onChange={e=>setSelectedLoginTeacher(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm bg-white dark:bg-slate-800 dark:text-white font-medium focus:ring-blue-500 transition-colors">
-                  {enhancedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
+                  {sortedTeachers.map(t => <option key={t.id} value={t.id}>{t.name} ({t.displaySubject})</option>)}
                 </select>
                 <div className="flex gap-2">
                   <input type="password" value={teacherPassword} onChange={e=>setTeacherPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()} placeholder="請輸入密碼" className="flex-1 border border-gray-300 dark:border-slate-600 rounded-lg p-2 text-sm focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-white transition-colors" />
@@ -2698,5 +2714,4 @@ export default function App() {
       {showFeeReportModal && userRole === 'admin' && <FeeReportModal />}
     </div>
   );
-  
 }
