@@ -38,6 +38,12 @@ const PERIODS = [
   { id: 7, name: '第七節', time: '15:15 - 16:00' }, { id: 8, name: '第八節', time: '16:10 - 16:55', isTutor: true },
 ];
 
+// 取得台灣時區 (GMT+8) 的當前日期字串 (YYYY-MM-DD)
+const getTaiwanDateString = () => {
+  const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [viewMode, setViewMode] = useState('class'); 
@@ -161,7 +167,7 @@ export default function App() {
 
   const [showFeeReportModal, setShowFeeReportModal] = useState(false);
   const [feeReportMonth, setFeeReportMonth] = useState(() => {
-    const d = new Date();
+    const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Taipei" }));
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
 
@@ -953,7 +959,7 @@ export default function App() {
             <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm print:border-none print:shadow-none print:p-0 transition-colors duration-200">
               <div className="text-center mb-6 hidden print:block border-b-2 border-black pb-4">
                 <h2 className="text-2xl font-bold text-black">嘉新國中 {feeReportMonth.split('-')[0]}年{feeReportMonth.split('-')[1]}月 代課節數統計表</h2>
-                <p className="text-sm mt-2 text-black">列印日期：{new Date().toLocaleDateString()}</p>
+                <p className="text-sm mt-2 text-black">列印日期：{new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}</p>
               </div>
               
               {reportData.length === 0 ? (
@@ -1039,9 +1045,9 @@ export default function App() {
     const [requestType, setRequestType] = useState(editReq ? editReq.type : 'sub'); 
     const [targetTeacher, setTargetTeacher] = useState(editReq ? editReq.targetTeacherId : '');
     const [targetLessonId, setTargetLessonId] = useState(editReq ? (editReq.targetLessonId || '') : ''); 
-    const [targetSwapDate, setTargetSwapDate] = useState(editReq ? (editReq.targetSwapDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]); 
+    const [targetSwapDate, setTargetSwapDate] = useState(editReq ? (editReq.targetSwapDate || getTaiwanDateString()) : getTaiwanDateString()); 
     const [reason, setReason] = useState(initReason);
-    const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : new Date().toISOString().split('T')[0]); 
+    const [targetDate, setTargetDate] = useState(editReq ? editReq.targetDate : getTaiwanDateString()); 
     const targetClass = classes.find(c => c.id === lesson.classId) || { name: lesson.classId };
 
     const requesterTeacherObj = enhancedTeachers.find(t => t.id === actualRequesterId);
@@ -1418,7 +1424,7 @@ export default function App() {
 
         return [
           req.id,
-          new Date(req.timestamp).toLocaleString('zh-TW', { hour12: false }),
+          new Date(req.timestamp).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false }),
           typeStr,
           reasonStr,
           requester,
@@ -1444,7 +1450,7 @@ export default function App() {
       const link = document.createElement('a');
       link.href = url;
       
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = getTaiwanDateString();
       const fileName = `嘉新調代課紀錄備份_${dateStr}.csv`;
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
@@ -1466,7 +1472,7 @@ export default function App() {
           ) : (
             <h2 className="text-lg font-bold mt-2 text-black">{isPublicView ? '全校調代課動態總表' : (isArchiveView ? '歷史歸檔總表' : '全校總表')}</h2>
           )}
-          <p className="text-xs text-gray-600 mt-1">列印時間：{new Date().toLocaleString()}</p>
+          <p className="text-xs text-gray-600 mt-1">列印時間：{new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}</p>
         </div>
 
         <div className="p-4 border-b dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 flex justify-between items-center print:hidden flex-wrap gap-3 transition-colors duration-200">
@@ -2688,4 +2694,3 @@ export default function App() {
       {showFeeReportModal && userRole === 'admin' && <FeeReportModal />}
     </div>
   );
-}
